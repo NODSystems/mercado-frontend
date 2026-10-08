@@ -1,3 +1,5 @@
+import '../styles/GrowthBackground.css'
+
 function GrowthBackground() {
   return (
     <div className="growth-background">
