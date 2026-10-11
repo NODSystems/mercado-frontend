@@ -1,0 +1,81 @@
+.nav-link,
+.nav-link:hover,
+.nav-link:focus,
+.nav-link:visited {
+    text-decoration: none;
+}
+
+.cards {
+    margin-top: 2%;
+    height: 42vh;
+    border-radius: 12px;
+    border: 1px solid #ccc;
+    padding: 1%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.card-titulo {
+    flex-shrink: 0;
+    margin: 0 0 10px 0;
+    padding: 5px 0;
+    background: white;
+}
+
+.card-conteudo {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.card-conteudo::-webkit-scrollbar {
+    width: 8px;
+}
+
+.card-conteudords::-webkit-scrollbar-track {
+    background: transparent;
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+
+.card-conteudo::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 10px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+
+.card-conteudo::-webkit-scrollbar-thumb:hover {
+    background: rgb(65, 113, 226);
+    background-clip: content-box;
+}
+
+/* Remove as setas */
+.card-conteudo::-webkit-scrollbar-button {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    background: transparent !important;
+    border: none !important;
+}
+
+.card-item {
+    display: block;
+    width: 100%;
+    padding: 11px 12px;
+    color: #777;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+}
+
+.card-item:hover {
+    font-size: 19px;
+    color: rgb(65, 113, 226);
+    background: #eee;
+
+}
