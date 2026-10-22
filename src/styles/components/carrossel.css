@@ -1,0 +1,101 @@
+.card-carrossel {
+    width: 100%;
+    min-height: 180px;
+    border-radius: 12px;
+    border: 1px solid  #ccc;
+    background-color: rgb(0, 0, 70);
+}
+
+.card-carrossel .card-body {
+    position: relative;
+}
+
+.card-carrossel h2 {
+    color: rgb(65, 113, 226);
+    font-weight: bold;
+}
+
+.carrossel-conteudo {
+    width: 100%;
+    padding: 10px 0;
+    box-sizing: border-box;
+}
+
+.carrossel-conteudo > div:first-child {
+    padding: 0 45px;
+    text-align: center;
+    box-sizing: border-box;
+}
+
+.carrossel-conteudo h5,
+.carrossel-conteudo h2,
+.carrossel-conteudo p {
+    text-align: center;
+}
+
+/* setas */
+
+.seta-anterior,
+.seta-proxima {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 2;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border-radius: 100%;
+    color: white;
+    background-color: rgb(65, 113, 226);
+    border: none;
+    transition: transform 0.2s ease;
+    font-size: 16px;
+}
+
+.seta-anterior:hover,
+.seta-proxima:hover {
+    color: rgb(65, 113, 226);
+    background-color: white ;
+    transform: translateY(-50%) scale(1.1);
+}
+
+.seta-anterior {
+    left: 1%;
+}
+
+.seta-proxima {
+    right: 1%;
+}
+
+/* bolinhas */
+
+.indicador {
+    width: 8px;
+    height: 8px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background-color: #ccc;
+    cursor: pointer;
+}
+
+.indicador.selecionado {
+    background-color: rgb(65, 113, 226);
+    transform: scale(1.1);
+}
+
+.indicador:hover {
+    transform: scale(1.2);
+}
+
+.indicadores-carrossel {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    margin-top: 16px;
+}
