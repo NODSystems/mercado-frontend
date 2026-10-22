@@ -24,18 +24,9 @@ function App() {
             <Route path="/cadastro" element={<Cadastro />} />
 
             {/* Configuração de empresas */}
-            <Route
-                path="/minhas-empresas"
-                element={<MinhasEmpresas />}
-            />
-            <Route
-                path="/tipo-empresa"
-                element={<TipoEmpresa />}
-            />
-            <Route
-                path="/configurar-empresa"
-                element={<ConfigurarEmpresa />}
-            />
+            <Route path="/minhas-empresas" element={<MinhasEmpresas />} />
+            <Route path="/tipo-empresa" element={<TipoEmpresa />} />
+            <Route path="/configurar-empresa" element={<ConfigurarEmpresa />} />
 
             {/* Sistema principal */}
             <Route
