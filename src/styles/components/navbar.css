@@ -174,3 +174,112 @@
     color: rgb(65, 113, 226);
     background: #eee;
 }
+
+/* =========================================================
+   RESPONSIVIDADE — NAVBAR DO SISTEMA
+   O menu quebra em linhas em telas intermediárias. Em celular,
+   os links continuam visíveis e podem ocupar mais de uma linha.
+   ========================================================= */
+
+.navbar > .container-fluid {
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 10px 1%;
+}
+
+.navbar .navbar-brand {
+    min-width: 130px;
+}
+
+.menu-navbar {
+    flex: 4 1 460px;
+    flex-wrap: wrap;
+    gap: 12px 20px;
+}
+
+.perfil-container {
+    flex: 1 1 190px;
+    min-width: 0;
+}
+
+/* Tablet e notebook estreito. */
+@media (max-width: 1000px) {
+    .navbar > .container-fluid {
+        justify-content: space-between;
+    }
+
+    .navbar .navbar-brand {
+        flex: 0 1 140px !important;
+    }
+
+    .navbar .navbar-brand img {
+        width: 140px !important;
+        height: auto !important;
+    }
+
+    .menu-navbar {
+        flex: 1 1 100% !important;
+        order: 3;
+        justify-content: center;
+        gap: 12px 18px;
+        padding: 8px 0;
+    }
+
+    .perfil-container {
+        flex: 0 1 210px;
+    }
+}
+
+/* Celular: menu em linhas e informações de perfil mais compactas. */
+@media (max-width: 600px) {
+    .navbar > .container-fluid {
+        padding: 10px 12px !important;
+        gap: 8px;
+    }
+
+    .navbar .navbar-brand {
+        flex: 1 1 100px !important;
+    }
+
+    .navbar .navbar-brand img {
+        width: 120px !important;
+        height: auto !important;
+    }
+
+    .menu-navbar {
+        flex: 1 1 100% !important;
+        justify-content: flex-start;
+        gap: 12px 16px;
+    }
+
+    .abas-navbar {
+        font-size: 13px;
+    }
+
+    .perfil-container {
+        flex: 1 1 100%;
+        justify-content: flex-start;
+    }
+
+    .perfil-botao {
+        max-width: 100%;
+        padding: 6px 8px;
+    }
+
+    .perfil-foto,
+    .perfil-foto-padrao {
+        width: 36px;
+        height: 36px;
+    }
+
+    .perfil-menu {
+        left: 0;
+        right: auto;
+    }
+}
+
+/* Acessibilidade: hover não deve ampliar o link e mover os vizinhos. */
+.abas-navbar:hover,
+.perfil-menu button:hover {
+    font-size: inherit;
+}

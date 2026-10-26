@@ -38,7 +38,7 @@
       rgba(6, 182, 212, 0.10),
       transparent 28%
     ),
-    #071a3d;
+    var(--cor-texto);
 }
 
 /* =========================================================
@@ -365,4 +365,45 @@
   .growth-content p {
     font-size: 15px;
   }
+}
+
+/* Telas baixas: o fundo continua preenchendo a área sem impor 100vh
+   extra ao formulário que o contém. */
+@media (max-height: 650px) {
+    .growth-content h2 {
+        font-size: clamp(25px, 4vh, 36px);
+    }
+
+    .growth-brand {
+        margin-bottom: 14px;
+        letter-spacing: 2px;
+    }
+
+    .growth-content p {
+        font-size: 14px;
+    }
+
+    .glow {
+        filter: blur(70px);
+    }
+}
+
+/* Celulares estreitos: reduz o conteúdo central para evitar cortes. */
+@media (max-width: 420px) {
+    .growth-content {
+        width: 90%;
+    }
+
+    .growth-content h2 {
+        font-size: 27px;
+    }
+
+    .growth-brand {
+        font-size: 11px;
+        letter-spacing: 2px;
+    }
+
+    .growth-content p {
+        font-size: 14px;
+    }
 }

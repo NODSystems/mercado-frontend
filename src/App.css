@@ -1,3 +1,9 @@
+/* =========================================================
+   COMPONENTES DO PAINEL — VISÃO GERAL
+   Regras específicas dos cards usados no dashboard.
+   Os estilos gerais de html, body e #root ficam em index.css.
+   ========================================================= */
+
 .nav-link,
 .nav-link:hover,
 .nav-link:focus,
@@ -5,11 +11,13 @@
     text-decoration: none;
 }
 
+/* Card com título fixo e área interna rolável. */
 .cards {
     margin-top: 2%;
-    height: 42vh;
-    border-radius: 12px;
-    border: 1px solid #ccc;
+    height: clamp(220px, 42vh, 460px);
+    min-width: 0;
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio-card);
     padding: 1%;
     display: flex;
     flex-direction: column;
@@ -18,22 +26,24 @@
 
 .card-titulo {
     flex-shrink: 0;
-    margin: 0 0 10px 0;
+    margin: 0 0 10px;
     padding: 5px 0;
-    background: white;
+    background: var(--cor-superficie);
 }
 
 .card-conteudo {
     flex: 1;
     min-height: 0;
     overflow-y: auto;
+    overscroll-behavior: contain;
 }
 
+/* Personaliza a barra de rolagem sem esconder a funcionalidade. */
 .card-conteudo::-webkit-scrollbar {
     width: 8px;
 }
 
-.card-conteudords::-webkit-scrollbar-track {
+.card-conteudo::-webkit-scrollbar-track {
     background: transparent;
     margin-top: 10px;
     margin-bottom: 10px;
@@ -41,25 +51,27 @@
 
 .card-conteudo::-webkit-scrollbar-thumb {
     background: #ccc;
-    border-radius: 10px;
     border: 2px solid transparent;
+    border-radius: 10px;
     background-clip: content-box;
 }
 
 .card-conteudo::-webkit-scrollbar-thumb:hover {
-    background: rgb(65, 113, 226);
+    background: var(--cor-primaria);
     background-clip: content-box;
 }
 
-/* Remove as setas */
+/* Remove apenas os botões/setas decorativos da barra de rolagem. */
 .card-conteudo::-webkit-scrollbar-button {
-    display: none !important;
-    width: 0 !important;
-    height: 0 !important;
-    background: transparent !important;
-    border: none !important;
+    display: none;
+    width: 0;
+    height: 0;
+    background: transparent;
+    border: none;
 }
 
+/* Item clicável/visual do card. O hover muda a cor, não o tamanho,
+   para evitar que os elementos vizinhos se desloquem. */
 .card-item {
     display: block;
     width: 100%;
@@ -67,23 +79,59 @@
     color: #777;
     background: transparent;
     border: none;
-    border-radius: 8px;
+    border-radius: var(--raio-padrao);
     text-align: left;
     cursor: pointer;
-    transition: background 0.2s, color 0.2s;
+    transition: background 0.2s ease, color 0.2s ease;
 }
 
 .card-item:hover {
-    font-size: 19px;
-    color: rgb(65, 113, 226);
+    color: var(--cor-primaria);
     background: #eee;
 }
 
-html {
-    scroll-behavior: smooth;
+/* Tablets e janelas menores: um pouco mais de espaço para leitura. */
+@media (max-width: 900px) {
+    .cards {
+        margin-top: 16px;
+        padding: 12px;
+    }
+
+    .card-item {
+        padding: 10px;
+    }
 }
 
-#root {
-    width: 100%;
-    min-height: 100vh;
+/* Celulares: altura controlada para os cards e conteúdo rolável por dentro. */
+@media (max-width: 576px) {
+    .cards {
+        height: 260px;
+        margin-top: 12px;
+        padding: 10px;
+    }
+
+    .card-titulo {
+        font-size: 14px;
+    }
+
+    .card-item {
+        overflow-wrap: anywhere;
+    }
+}
+
+/* Telas baixas, por exemplo 800×600: não deixar os cards enormes. */
+@media (max-height: 650px) {
+    .cards {
+        height: 250px;
+        margin-top: 12px;
+    }
+}
+
+
+/* Em 800px de largura, dois cards lado a lado podem ficar estreitos.
+   Empilhamos as colunas do dashboard abaixo desse ponto para preservar leitura. */
+@media (max-width: 850px) {
+    .row > .col-md-6 {
+        width: 100%;
+    }
 }

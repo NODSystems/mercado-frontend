@@ -49,7 +49,7 @@
 }
 
 .home-navbar nav a:hover {
-  color: #2563eb;
+  color: var(--cor-primaria);
 }
 
 .home-nav-buttons {
@@ -69,21 +69,21 @@
 }
 
 .nav-login {
-  color: #2563eb;
-  border: 1px solid #2563eb;
+  color: var(--cor-primaria);
+  border: 1px solid var(--cor-primaria);
 }
 
 .nav-login:hover {
-  background: #eff6ff;
+  background: var(--cor-fundo-destaque);
 }
 
 .nav-register {
   color: white;
-  background: #2563eb;
+  background: var(--cor-primaria);
 }
 
 .nav-register:hover {
-  background: #1d4ed8;
+  background: var(--cor-primaria-hover);
 }
 
 /* =========================================================
@@ -113,7 +113,7 @@
 .hero-tag {
   display: inline-block;
   margin-bottom: 22px;
-  color: #2563eb;
+  color: var(--cor-primaria);
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 2px;
@@ -128,7 +128,7 @@
 }
 
 .hero-content h1 span {
-  color: #2563eb;
+  color: var(--cor-primaria);
 }
 
 .hero-content > p {
@@ -156,11 +156,11 @@
   padding: 14px 24px;
   border-radius: 8px;
   color: white;
-  background: #2563eb;
+  background: var(--cor-primaria);
 }
 
 .hero-primary:hover {
-  background: #1d4ed8;
+  background: var(--cor-primaria-hover);
   transform: translateY(-2px);
 }
 
@@ -169,7 +169,7 @@
 }
 
 .hero-secondary:hover {
-  color: #2563eb;
+  color: var(--cor-primaria);
 }
 
 /* =========================================================
@@ -240,7 +240,7 @@
 
 .growth-chart polyline {
   fill: none;
-  stroke: #2563eb;
+  stroke: var(--cor-primaria);
   stroke-width: 5;
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -263,7 +263,7 @@
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: #2563eb;
+  background: var(--cor-primaria);
   box-shadow:
     0 0 8px rgba(37, 99, 235, 0.9),
     0 0 20px rgba(37, 99, 235, 0.4);
@@ -346,7 +346,7 @@
 
 .section-label {
   margin-bottom: 15px;
-  color: #2563eb;
+  color: var(--cor-primaria);
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 2px;
@@ -361,7 +361,7 @@
    ========================================================= */
 
 .about-section {
-  background: #f8fafc;
+  background: var(--cor-fundo);
 }
 
 .about-grid {
@@ -381,7 +381,7 @@
 }
 
 .about-title h2 span {
-  color: #2563eb;
+  color: var(--cor-primaria);
 }
 
 .about-text {
@@ -406,13 +406,13 @@
   grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: 15px;
-  border-left: 3px solid #2563eb;
+  border-left: 3px solid var(--cor-primaria);
   background: white;
   box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
 }
 
 .idea-question > span {
-  color: #2563eb;
+  color: var(--cor-primaria);
   font-size: 42px;
   font-weight: 800;
   line-height: 1;
@@ -435,7 +435,7 @@
   grid-template-columns: 0.9fr 1.1fr;
   gap: 80px;
   align-items: center;
-  background: #071a3d;
+  background: var(--cor-texto);
   color: white;
 }
 
@@ -596,7 +596,7 @@
   position: relative;
   padding: 120px 7%;
   overflow: hidden;
-  background: #071a3d;
+  background: var(--cor-texto);
   color: white;
   text-align: center;
 }
@@ -642,7 +642,7 @@
    ========================================================= */
 
 .process-section {
-  background: #f8fafc;
+  background: var(--cor-fundo);
 }
 
 .process-section > h2 {
@@ -674,7 +674,7 @@
   margin-bottom: 20px;
   border-radius: 50%;
   color: white;
-  background: #2563eb;
+  background: var(--cor-primaria);
   font-size: 14px;
   font-weight: 800;
   box-shadow: 0 8px 20px rgba(37, 99, 235, 0.2);
@@ -766,7 +766,7 @@
 
 .final-cta-content a:hover {
   transform: translateY(-2px);
-  background: #eff6ff;
+  background: var(--cor-fundo-destaque);
 }
 
 /* =========================================================
@@ -956,4 +956,57 @@
     flex-direction: column;
     text-align: center;
   }
+}
+
+/* =========================================================
+   AJUSTES DE RESPONSIVIDADE — ALTURA E TELAS INTERMEDIÁRIAS
+   ========================================================= */
+
+/* Notebook compacto e 800x600 em modo paisagem: reduz o excesso
+   de espaçamento vertical, mas mantém o conteúdo rolável. */
+@media (max-height: 650px) and (min-width: 651px) {
+  .home-hero {
+    min-height: auto;
+    padding-top: 48px;
+    padding-bottom: 48px;
+  }
+
+  .hero-visual {
+    min-height: 340px;
+  }
+
+  .growth-chart {
+    height: 300px;
+  }
+
+  .home-section,
+  .problem-section {
+    padding-top: 72px;
+    padding-bottom: 72px;
+  }
+
+  .simplicity-section,
+  .final-cta {
+    padding-top: 72px;
+    padding-bottom: 72px;
+  }
+}
+
+/* Em telas estreitas, nenhum item do grid pode forçar largura extra. */
+.home-page,
+.home-hero,
+.about-grid,
+.problem-section,
+.feature-grid,
+.process-grid {
+  min-width: 0;
+}
+
+.home-hero > *,
+.about-grid > *,
+.problem-section > *,
+.feature-grid > *,
+.process-grid > * {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }

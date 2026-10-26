@@ -2,8 +2,8 @@
 .minhas-empresas {
     min-height: 100vh;
     padding: 48px;
-    background: #f8fafc;
-    color: #071a3d;
+    background: var(--cor-fundo);
+    color: var(--cor-texto);
     font-family: inherit;
 }
 
@@ -23,7 +23,7 @@
 
 .empresas-header p {
     margin: 0;
-    color: #64748b;
+    color: var(--cor-texto-secundario);
     font-size: 15px;
 }
 
@@ -35,7 +35,7 @@
     padding: 13px 20px;
     border: none;
     border-radius: 8px;
-    background: #2563eb;
+    background: var(--cor-primaria);
     color: #fff;
     font-size: 14px;
     font-weight: 600;
@@ -44,7 +44,7 @@
 }
 
 .adicionar-empresa:hover {
-    background: #1d4ed8;
+    background: var(--cor-primaria-hover);
 }
 
 .adicionar-empresa span {
@@ -59,7 +59,7 @@
     justify-content: center;
     min-height: 360px;
     padding: 40px 24px;
-    border: 1px dashed #cbd5e1;
+    border: 1px dashed var(--cor-borda);
     border-radius: 16px;
     background: #fff;
     text-align: center;
@@ -73,8 +73,8 @@
     height: 64px;
     margin-bottom: 20px;
     border-radius: 50%;
-    background: #eff6ff;
-    color: #2563eb;
+    background: var(--cor-fundo-destaque);
+    color: var(--cor-primaria);
     font-size: 36px;
 }
 
@@ -86,7 +86,7 @@
 .empresas-vazio p {
     max-width: 460px;
     margin: 0 0 24px;
-    color: #64748b;
+    color: var(--cor-texto-secundario);
     font-size: 14px;
     line-height: 1.7;
 }
@@ -108,5 +108,68 @@
 
     .adicionar-empresa {
         width: 100%;
+    }
+}
+
+/* =========================================================
+   RESPONSIVIDADE — MINHAS EMPRESAS
+   ========================================================= */
+
+/* Telas médias: reduz margens e deixa o cabeçalho respirar. */
+@media (min-width: 701px) and (max-width: 1100px) {
+    .minhas-empresas {
+        padding: 32px;
+    }
+
+    .empresas-header {
+        gap: 18px;
+        margin-bottom: 36px;
+    }
+}
+
+/* Celulares e janelas estreitas. */
+@media (max-width: 480px) {
+    .minhas-empresas {
+        padding: 22px 14px;
+    }
+
+    .empresas-header h1 {
+        font-size: clamp(23px, 6vw, 26px);
+    }
+
+    .empresas-header p {
+        font-size: 14px;
+        line-height: 1.6;
+    }
+
+    .empresas-vazio {
+        min-height: 280px;
+        padding: 28px 16px;
+    }
+
+    .empresas-vazio h2 {
+        font-size: 19px;
+    }
+
+    .empresas-vazio p {
+        font-size: 13px;
+    }
+}
+
+/* Em telas baixas, reduz os espaços verticais sem esconder conteúdo. */
+@media (max-height: 650px) {
+    .minhas-empresas {
+        padding-top: 20px;
+        padding-bottom: 20px;
+    }
+
+    .empresas-header {
+        margin-bottom: 24px;
+    }
+
+    .empresas-vazio {
+        min-height: 240px;
+        padding-top: 24px;
+        padding-bottom: 24px;
     }
 }

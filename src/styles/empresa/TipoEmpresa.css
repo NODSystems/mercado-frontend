@@ -2,8 +2,8 @@
 .tipo-empresa {
     min-height: 100vh;
     padding: 32px 48px 48px;
-    background: #f8fafc;
-    color: #071a3d;
+    background: var(--cor-fundo);
+    color: var(--cor-texto);
     font-family: inherit;
 }
 
@@ -25,11 +25,11 @@
 }
 
 .voltar-empresas:hover {
-    color: #2563eb;
+    color: var(--cor-primaria);
 }
 
 .etapa-empresa {
-    color: #64748b;
+    color: var(--cor-texto-secundario);
     font-size: 12px;
     font-weight: 700;
     letter-spacing: 1px;
@@ -50,7 +50,7 @@
 .tipo-empresa-subtitulo {
     max-width: 600px;
     margin: 0 auto 36px;
-    color: #64748b;
+    color: var(--cor-texto-secundario);
     font-size: 15px;
     line-height: 1.7;
     text-align: center;
@@ -85,9 +85,9 @@
 }
 
 .tipo-empresa-card.selecionado {
-    border: 2px solid #2563eb;
+    border: 2px solid var(--cor-primaria);
     padding: 21px;
-    background: #eff6ff;
+    background: var(--cor-fundo-destaque);
 }
 
 .tipo-empresa-icone {
@@ -98,19 +98,19 @@
     height: 44px;
     margin-bottom: 16px;
     border-radius: 10px;
-    background: #eff6ff;
+    background: var(--cor-fundo-destaque);
     font-size: 23px;
 }
 
 .tipo-empresa-nome {
     margin-bottom: 7px;
-    color: #071a3d;
+    color: var(--cor-texto);
     font-size: 15px;
     font-weight: 700;
 }
 
 .tipo-empresa-descricao {
-    color: #64748b;
+    color: var(--cor-texto-secundario);
     font-size: 12px;
     line-height: 1.5;
 }
@@ -119,7 +119,7 @@
     position: absolute;
     top: 14px;
     right: 14px;
-    color: #2563eb;
+    color: var(--cor-primaria);
     font-size: 18px;
     font-weight: 700;
 }
@@ -135,7 +135,7 @@
 }
 
 .tipo-empresa-rodape > span {
-    color: #64748b;
+    color: var(--cor-texto-secundario);
     font-size: 13px;
 }
 
@@ -143,7 +143,7 @@
     padding: 13px 24px;
     border: none;
     border-radius: 8px;
-    background: #2563eb;
+    background: var(--cor-primaria);
     color: #fff;
     font-size: 14px;
     font-weight: 600;
@@ -151,7 +151,7 @@
 }
 
 .continuar-empresa:hover:not(:disabled) {
-    background: #1d4ed8;
+    background: var(--cor-primaria-hover);
 }
 
 .continuar-empresa:disabled {
@@ -185,5 +185,75 @@
 
     .continuar-empresa {
         width: 100%;
+    }
+}
+
+/* =========================================================
+   RESPONSIVIDADE — SELEÇÃO DO TIPO DE EMPRESA
+   ========================================================= */
+
+/* Resoluções compactas de desktop e tablets em paisagem. */
+@media (min-width: 801px) and (max-width: 1100px) {
+    .tipo-empresa {
+        padding: 28px 32px 36px;
+    }
+
+    .tipos-empresa-grid {
+        gap: 14px;
+    }
+
+    .tipo-empresa-card {
+        padding: 18px;
+    }
+
+    .tipo-empresa-card.selecionado {
+        padding: 17px;
+    }
+}
+
+/* Celulares muito estreitos: evitar que textos e cards fiquem apertados. */
+@media (max-width: 380px) {
+    .tipo-empresa {
+        padding: 20px 12px;
+    }
+
+    .tipo-empresa-conteudo h1 {
+        font-size: 24px;
+    }
+
+    .tipo-empresa-subtitulo {
+        font-size: 14px;
+    }
+
+    .tipo-empresa-card {
+        padding: 18px;
+    }
+
+    .tipo-empresa-card.selecionado {
+        padding: 17px;
+    }
+}
+
+/* Pouca altura, como em 800x600: reduz espaços sem fixar a altura da página. */
+@media (max-height: 650px) {
+    .tipo-empresa {
+        padding-top: 20px;
+        padding-bottom: 24px;
+    }
+
+    .tipo-empresa-header {
+        margin-bottom: 24px;
+    }
+
+    .tipo-empresa-conteudo h1 {
+        margin-bottom: 8px;
+    }
+
+    .tipo-empresa-subtitulo {
+        margin-bottom: 24px;
+    }
+
+    .tipo-empresa-card {
+        min-height: 145px;
     }
 }

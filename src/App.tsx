@@ -16,6 +16,7 @@ import ConfigurarEmpresa from './pages/empresa/ConfigurarEmpresa';
 import './App.css';
 
 function App() {
+    // As rotas não definem responsividade; cada tela importa seu CSS específico.
     return (
         <Routes>
             {/* Páginas de acesso */}

@@ -2,7 +2,7 @@
    LOGIN — NODSYSTEMS
    ========================================================= */
 
-.login-page {
+.login-page--login {
   min-height: 100vh;
   display: flex;
   background: #ffffff;
@@ -75,7 +75,7 @@
 }
 
 .login-content input:focus {
-  border-color: #2563eb;
+  border-color: var(--cor-primaria);
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
 }
 
@@ -121,7 +121,7 @@
 }
 
 .password-toggle:hover {
-  color: #2563eb !important;
+  color: var(--cor-primaria) !important;
   background: rgba(37, 99, 235, 0.08) !important;
   transform: translateY(-50%) !important;
 }
@@ -148,7 +148,7 @@
 }
 
 .forgot-password a {
-  color: #2563eb;
+  color: var(--cor-primaria);
   font-size: 14px;
   text-decoration: none;
 }
@@ -168,7 +168,7 @@
   border: none;
   border-radius: 8px;
 
-  background: #2563eb;
+  background: var(--cor-primaria);
   color: white;
 
   font-size: 16px;
@@ -182,7 +182,7 @@
 }
 
 .login-content form > button[type="submit"]:hover {
-  background: #1d4ed8;
+  background: var(--cor-primaria-hover);
   transform: translateY(-1px);
 }
 
@@ -203,7 +203,7 @@
 }
 
 .register-link a {
-  color: #2563eb;
+  color: var(--cor-primaria);
   font-weight: bold;
   text-decoration: none;
 }
@@ -222,7 +222,7 @@
 
   overflow: hidden;
 
-  background: #071a3d;
+  background: var(--cor-texto);
 }
 
 /* =========================================================
@@ -252,4 +252,61 @@
   .login-visual {
     min-height: 350px;
   }
+}
+
+/* =========================================================
+   AJUSTES COMPLEMENTARES — LOGIN
+   ========================================================= */
+
+/* Tablets e notebooks estreitos: diminui os espaços do formulário. */
+@media (min-width: 801px) and (max-width: 1100px) {
+    .login-form {
+        padding: 32px;
+    }
+
+    .login-logo {
+        width: 190px;
+        margin-bottom: 32px;
+    }
+}
+
+/* Celulares pequenos: mantém o formulário dentro da largura disponível. */
+@media (max-width: 420px) {
+    .login-form {
+        padding: 28px 18px;
+    }
+
+    .login-content h1 {
+        font-size: 27px;
+    }
+
+    .login-content > p {
+        margin-bottom: 24px;
+    }
+
+    .login-logo {
+        width: 165px;
+        margin-bottom: 28px;
+    }
+}
+
+/* Em telas baixas, rolar é melhor do que cortar campos ou botões. */
+@media (max-height: 650px) and (min-width: 801px) {
+    .login-form {
+        padding-top: 24px;
+        padding-bottom: 24px;
+    }
+
+    .login-logo {
+        width: 160px;
+        margin-bottom: 20px;
+    }
+
+    .login-content > p {
+        margin-bottom: 20px;
+    }
+
+    .login-content form {
+        gap: 14px;
+    }
 }

@@ -6,14 +6,16 @@ import nodsystems from '../../assets/nodsystems.png'
 import GrowthBackground from '../../components/GrowthBackground'
 
 import '../../styles/usuario/Login.css'
+import '../../styles/components/GrowthBackground.css'
 
 function Login() {
 
   // Controla se a senha está visível ou escondida
   const [showPassword, setShowPassword] = useState(false)
 
+  // O modificador --login permite identificar a página em seu CSS.
   return (
-    <main className="login-page">
+    <main className="login-page login-page--login">
 
       {/* =================================================
           LADO ESQUERDO — FORMULÁRIO

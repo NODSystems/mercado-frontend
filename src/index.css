@@ -1,26 +1,49 @@
+/* =========================================================
+   NODSYSTEMS — BASE GLOBAL
+   Este arquivo contém apenas regras compartilhadas pelo site.
+   Os estilos específicos de cada tela ficam em src/styles/.
+   ========================================================= */
+
 :root {
-    --text: #6b6375;
-    --text-h: #08060d;
-    --bg: #fff;
-    --border: #e5e4e7;
-    --code-bg: #f4f3ec;
-    --accent: #aa3bff;
-    --accent-bg: rgba(170, 59, 255, 0.1);
-    --accent-border: rgba(170, 59, 255, 0.5);
-    --social-bg: rgba(244, 243, 236, 0.5);
+    /* Paleta oficial: reutilize estas variáveis nos outros CSS. */
+    --cor-primaria: #2563eb;
+    --cor-primaria-hover: #1d4ed8;
+    --cor-texto: #071a3d;
+    --cor-texto-secundario: #64748b;
 
-    --shadow:
-        rgba(0, 0, 0, 0.1) 0 10px 15px -3px,
-        rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+    /* Superfícies, fundos e bordas. */
+    --cor-fundo: #f8fafc;
+    --cor-superficie: #ffffff;
+    --cor-fundo-destaque: #eff6ff;
+    --cor-borda: #cbd5e1;
 
-    --sans: system-ui, "Segoe UI", Roboto, sans-serif;
-    --heading: system-ui, "Segoe UI", Roboto, sans-serif;
-    --mono: ui-monospace, Consolas, monospace;
+    /* Estados semânticos. */
+    --cor-sucesso: #16a34a;
+    --cor-erro: #dc2626;
+    --cor-aviso: #f59e0b;
 
-    font: 18px/145% var(--sans);
-    letter-spacing: 0.18px;
-    color: var(--text);
-    background: var(--bg);
+    /* Tipografia. Use clamp nas telas para tamanhos fluidos quando necessário. */
+    --fonte-principal: Arial, Helvetica, sans-serif;
+    --fonte-mono: ui-monospace, Consolas, monospace;
+    --fonte-tamanho-base: 16px;
+
+    /* Escala de espaçamento compartilhada. */
+    --espaco-xs: 4px;
+    --espaco-sm: 8px;
+    --espaco-md: 16px;
+    --espaco-lg: 24px;
+    --espaco-xl: 32px;
+
+    /* Cantos e sombras padronizados. */
+    --raio-padrao: 8px;
+    --raio-card: 12px;
+    --raio-grande: 16px;
+    --sombra-padrao: 0 2px 8px rgba(7, 26, 61, 0.08);
+
+    font-family: var(--fonte-principal);
+    font-size: var(--fonte-tamanho-base);
+    color: var(--cor-texto);
+    background: var(--cor-fundo);
 
     font-synthesis: none;
     text-rendering: optimizeLegibility;
@@ -28,35 +51,60 @@
     -moz-osx-font-smoothing: grayscale;
 }
 
-* {
+/* Inclui padding e borda dentro da largura/altura declaradas. */
+*,
+*::before,
+*::after {
     box-sizing: border-box;
 }
 
-html,
-body {
-    margin: 0;
-    padding: 0;
+/* Remove margens padrão que costumam criar diferenças entre navegadores. */
+html {
     width: 100%;
     min-height: 100%;
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
 }
 
 body {
-    background: var(--bg);
-    overflow-x: hidden;
+    width: 100%;
+    min-width: 320px; /* 320px é o limite mínimo suportado para celulares. */
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+    font-family: var(--fonte-principal);
+    color: var(--cor-texto);
+    background: var(--cor-fundo);
 }
 
+/* O React ocupa a largura disponível, sem fixar uma largura de desktop. */
 #root {
     width: 100%;
     min-height: 100vh;
 }
 
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
+/* Evita que mídia grande ultrapasse o contêiner; não força altura em imagens. */
+img,
+svg,
+video,
+canvas {
+    max-width: 100%;
 }
 
-body {
-    font-family: Arial, Helvetica, sans-serif;
-    min-width: 320px;
+/* Deixa o foco do teclado visível para acessibilidade. */
+:focus-visible {
+    outline: 3px solid rgba(37, 99, 235, 0.45);
+    outline-offset: 2px;
+}
+
+/* Evita animações intensas para quem prefere movimento reduzido no sistema. */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
 }

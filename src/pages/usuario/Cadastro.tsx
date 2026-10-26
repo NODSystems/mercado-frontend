@@ -15,8 +15,9 @@ function Cadastro() {
   // Controla a visibilidade da confirmação da senha
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
+  // O modificador --cadastro permite identificar a página em seu CSS.
   return (
-    <main className="login-page">
+    <main className="login-page login-page--cadastro">
 
       {/* =================================================
           LADO ESQUERDO — FORMULÁRIO DE CADASTRO

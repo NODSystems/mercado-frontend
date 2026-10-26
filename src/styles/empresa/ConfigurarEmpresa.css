@@ -2,8 +2,8 @@
 .configurar-empresa {
     min-height: 100vh;
     padding: 28px 40px 48px;
-    background: #f8fafc;
-    color: #071a3d;
+    background: var(--cor-fundo);
+    color: var(--cor-texto);
     font-family: inherit;
 }
 
@@ -19,17 +19,17 @@
     padding: 8px 0;
     border: none;
     background: transparent;
-    color: #64748b;
+    color: var(--cor-texto-secundario);
     font-size: 14px;
     cursor: pointer;
 }
 
 .configurar-voltar:hover {
-    color: #2563eb;
+    color: var(--cor-primaria);
 }
 
 .configurar-marca {
-    color: #071a3d;
+    color: var(--cor-texto);
     font-size: 20px;
     font-weight: 800;
     letter-spacing: -0.5px;
@@ -46,7 +46,7 @@
 }
 
 .configurar-etiqueta {
-    color: #2563eb;
+    color: var(--cor-primaria);
     font-size: 11px;
     font-weight: 800;
     letter-spacing: 1.5px;
@@ -60,7 +60,7 @@
 
 .configurar-introducao > p {
     margin: 0;
-    color: #64748b;
+    color: var(--cor-texto-secundario);
     font-size: 14px;
     line-height: 1.7;
 }
@@ -87,19 +87,19 @@
     justify-content: center;
     width: 32px;
     height: 32px;
-    border: 1px solid #cbd5e1;
+    border: 1px solid var(--cor-borda);
     border-radius: 50%;
     font-size: 13px;
     font-weight: 700;
 }
 
 .progresso-etapa.ativa {
-    color: #2563eb;
+    color: var(--cor-primaria);
 }
 
 .progresso-etapa.ativa .progresso-numero {
-    border-color: #2563eb;
-    background: #2563eb;
+    border-color: var(--cor-primaria);
+    background: var(--cor-primaria);
     color: #fff;
 }
 
@@ -123,7 +123,7 @@
 
 .configurar-descricao {
     margin: 0 0 28px;
-    color: #64748b;
+    color: var(--cor-texto-secundario);
     font-size: 14px;
     line-height: 1.6;
 }
@@ -151,11 +151,11 @@
     width: 100%;
     min-height: 46px;
     padding: 12px 14px;
-    border: 1px solid #cbd5e1;
+    border: 1px solid var(--cor-borda);
     border-radius: 8px;
     outline: none;
     background: #fff;
-    color: #071a3d;
+    color: var(--cor-texto);
     font: inherit;
     font-size: 14px;
     transition: border-color 0.2s, box-shadow 0.2s;
@@ -166,12 +166,12 @@
 }
 
 .campo-configurar input:focus {
-    border-color: #2563eb;
+    border-color: var(--cor-primaria);
     box-shadow: 0 0 0 3px rgb(37 99 235 / 10%);
 }
 
 .campo-configurar small {
-    color: #64748b;
+    color: var(--cor-texto-secundario);
     font-size: 12px;
     line-height: 1.5;
 }
@@ -180,8 +180,8 @@
     padding: 13px 14px;
     border: 1px solid #dbeafe;
     border-radius: 8px;
-    background: #eff6ff;
-    color: #1d4ed8;
+    background: var(--cor-fundo-destaque);
+    color: var(--cor-primaria-hover);
     font-size: 14px;
     font-weight: 600;
 }
@@ -213,23 +213,23 @@
 }
 
 .configurar-botao.principal {
-    background: #2563eb;
+    background: var(--cor-primaria);
     color: #fff;
 }
 
 .configurar-botao.principal:hover {
-    background: #1d4ed8;
+    background: var(--cor-primaria-hover);
 }
 
 .configurar-botao.secundario {
-    border-color: #cbd5e1;
+    border-color: var(--cor-borda);
     background: #fff;
     color: #475569;
 }
 
 .configurar-botao.secundario:hover {
     border-color: #94a3b8;
-    background: #f8fafc;
+    background: var(--cor-fundo);
 }
 
 .configurar-erro {
@@ -262,14 +262,14 @@
 }
 
 .revisao-grupo strong {
-    color: #071a3d;
+    color: var(--cor-texto);
 }
 
 .aviso-prototipo {
     padding: 14px;
     border-radius: 8px;
-    background: #eff6ff;
-    color: #1d4ed8;
+    background: var(--cor-fundo-destaque);
+    color: var(--cor-primaria-hover);
     font-size: 12px;
     line-height: 1.6;
 }
@@ -308,7 +308,7 @@
 
 .configurar-sucesso p {
     margin: 0 0 28px;
-    color: #64748b;
+    color: var(--cor-texto-secundario);
     font-size: 14px;
     line-height: 1.8;
 }
@@ -359,5 +359,74 @@
 
     .configurar-sucesso {
         margin: 48px auto;
+    }
+}
+
+/* =========================================================
+   RESPONSIVIDADE — CONFIGURAÇÃO DA EMPRESA
+   ========================================================= */
+
+/* Tablets e janelas médias: o formulário ocupa melhor o espaço. */
+@media (min-width: 651px) and (max-width: 1000px) {
+    .configurar-empresa {
+        padding: 24px 28px 36px;
+    }
+
+    .configurar-header {
+        margin-bottom: 32px;
+    }
+
+    .configurar-card {
+        padding: 28px;
+    }
+}
+
+/* Celulares pequenos: simplifica espaçamentos e protege contra overflow. */
+@media (max-width: 400px) {
+    .configurar-empresa {
+        padding-right: 12px;
+        padding-left: 12px;
+    }
+
+    .configurar-card {
+        padding: 18px 14px;
+    }
+
+    .configurar-introducao h1 {
+        font-size: 23px;
+    }
+
+    .configurar-progresso {
+        gap: 5px;
+    }
+
+    .progresso-texto {
+        font-size: 10px;
+        overflow-wrap: anywhere;
+    }
+
+    .configurar-formulario h2 {
+        font-size: 20px;
+    }
+}
+
+/* Tela baixa: permite rolagem natural e reduz espaços verticais. */
+@media (max-height: 650px) {
+    .configurar-empresa {
+        padding-top: 18px;
+        padding-bottom: 24px;
+    }
+
+    .configurar-header {
+        margin-bottom: 22px;
+    }
+
+    .configurar-introducao {
+        margin-bottom: 22px;
+    }
+
+    .configurar-sucesso {
+        margin-top: 32px;
+        margin-bottom: 32px;
     }
 }
