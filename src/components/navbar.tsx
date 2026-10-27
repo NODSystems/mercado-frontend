@@ -1,14 +1,19 @@
 import { useState } from "react";
-import logo from "../assets/NodLogo(maior).jpeg";
-import "../styles/components/navbar.css"
 import { NavLink, useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCircleUser, faRightFromBracket, faUserEdit } from "@fortawesome/free-solid-svg-icons";
+import {
+    faCircleUser,
+    faRightFromBracket,
+    faUserEdit,
+} from "@fortawesome/free-solid-svg-icons";
+
+import logo from "../assets/NodLogo(maior).jpeg";
+import "../styles/components/navbar.css";
 
 function Navbar() {
-
     const [menu, setMenu] = useState(false);
     const [foto, setFoto] = useState<string | null>(null);
+
     const navigate = useNavigate();
 
     function perfil() {
@@ -21,59 +26,86 @@ function Navbar() {
         navigate("/login");
     }
 
+    const abas = [
+        { nome: "Visão Geral", rota: "/" },
+        { nome: "PDV", rota: "/pdv" },
+        { nome: "Estoque", rota: "/estoque" },
+        { nome: "Financeiro", rota: "/financeiro" },
+        { nome: "Equipe", rota: "/equipe" },
+        { nome: "Relatórios", rota: "/relatorios" },
+    ];
+
     return (
         <nav className="navbar">
-            <div className="container-fluid row" style={{ padding: "0 1%", display: "flex", alignItems: "center" }}>
-
-                <div className="navbar-brand" style={{ flex: 1 }}>
-                    <img src={logo} alt="Logo" style={{ width: '180px', height: '60px', objectFit: 'contain' }} />
+            <div className="container-fluid navbar-conteudo">
+                <div className="navbar-brand">
+                    <img src={logo} alt="Logo NODSystems" />
                 </div>
 
-                <div className="menu-navbar" style={{ flex: 4 }}>
-
-                    <NavLink to={'/'} className="nav-link abas-navbar">Visão Geral</NavLink>
-
-                    <NavLink to={'/1'} className="nav-link abas-navbar">PDV</NavLink>
-
-                    <NavLink to={'/2'} className="nav-link abas-navbar">Estoque</NavLink>
-
-                    <NavLink to={'/3'} className="nav-link abas-navbar">Financeiro</NavLink>
-
-                    <NavLink to={'/4'} className="nav-link abas-navbar">Equipe</NavLink>
-
-                    <NavLink to={'/5'} className="nav-link abas-navbar" >Relatórios</NavLink>
-
+                <div className="menu-navbar">
+                    {abas.map((aba) => (
+                        <NavLink
+                            key={aba.rota}
+                            to={aba.rota}
+                            end={aba.rota === "/"}
+                            className="nav-link abas-navbar"
+                        >
+                            {aba.nome}
+                        </NavLink>
+                    ))}
                 </div>
 
                 <div className="perfil-container">
-                    <button className={`perfil-botao ${menu ? 'ativo' : ''}`} style={{ width: '100%', justifyContent: 'space-between' }} onClick={() => setMenu(!menu)}>
+                    <button
+                        type="button"
+                        className={`perfil-botao ${menu ? "ativo" : ""}`}
+                        onClick={() => setMenu(!menu)}
+                        aria-expanded={menu}
+                        aria-label="Abrir menu do perfil"
+                    >
                         <div className="perfil">
                             {foto ? (
-                                <img src={foto} alt="Foto do funcionário" className="perfil-foto" />
+                                <img
+                                    src={foto}
+                                    alt="Foto do funcionário"
+                                    className="perfil-foto"
+                                />
                             ) : (
-                                <FontAwesomeIcon icon={faCircleUser} className="perfil-foto-padrao" />
+                                <FontAwesomeIcon
+                                    icon={faCircleUser}
+                                    className="perfil-foto-padrao"
+                                />
                             )}
+
                             <div className="perfil-informacoes">
-                                <strong style={{ fontSize: '16px' }}>Nome</strong>
-                                <span style={{ fontSize: '15px' }}>Cargo</span>
+                                <strong>Nome</strong>
+                                <span>Cargo</span>
                             </div>
                         </div>
-                        <span className={`perfil-seta ${menu ? 'open' : ''}`}>&#9013;</span>
+
+                        <span
+                            className={`perfil-seta ${menu ? "open" : ""}`}
+                        >
+                            &#9013;
+                        </span>
                     </button>
 
                     {menu && (
                         <div className="perfil-menu">
-                            <button onClick={perfil}>
-                                <FontAwesomeIcon icon={faUserEdit} /> Editar perfil
+                            <button type="button" onClick={perfil}>
+                                <FontAwesomeIcon icon={faUserEdit} />
+                                Editar perfil
                             </button>
-                            <button onClick={sair}>
-                                <FontAwesomeIcon icon={faRightFromBracket} /> Sair
+
+                            <button type="button" onClick={sair}>
+                                <FontAwesomeIcon icon={faRightFromBracket} />
+                                Sair
                             </button>
                         </div>
                     )}
                 </div>
-            </div >
-        </nav >
+            </div>
+        </nav>
     );
 }
 

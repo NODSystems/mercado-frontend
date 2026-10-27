@@ -1,114 +1,161 @@
-/* navbar estilo geral */
+/* ===== NAVBAR GERAL ===== */
 
 .navbar {
     width: 100%;
-    background-color: white;
-    border-bottom: 1px solid #ddd;
+    padding: 8px 0;
+    background-color: #fff;
+    border-bottom: 1px solid #e5e7eb;
+    position: relative;
+    z-index: 100;
 }
 
-/* links navbar */
+.navbar > .container-fluid.navbar-conteudo {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 0 24px;
+}
+
+/* ===== LOGO ===== */
+
+.navbar .navbar-brand {
+    display: flex;
+    align-items: center;
+    flex: 0 0 auto;
+    margin: 0;
+    padding: 0;
+}
+
+.navbar .navbar-brand img {
+    display: block;
+    width: 125px;
+    height: 44px;
+    object-fit: contain;
+}
+
+/* ===== LINKS ===== */
+
+.menu-navbar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+}
 
 .abas-navbar {
-    color: #777;
+    position: relative;
+    padding: 12px 13px;
+    color: #6b7280;
+    font-size: 14px;
     font-weight: 600;
     text-decoration: none;
-    position: relative;
-    transition: transform 0.1s ease;
+    white-space: nowrap;
+    border-radius: 7px;
+    transition: color 0.2s ease, background-color 0.2s ease;
 }
 
 .abas-navbar:hover {
-    transform: scale(1.1);
-    color: rgb(65, 113, 226);
+    color: #4171e2;
+    background-color: #f5f7ff;
 }
 
 .abas-navbar::after {
     content: "";
     position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: 3px;
-    background-color: rgb(65, 113, 226);
-
+    bottom: 4px;
+    left: 25%;
+    width: 50%;
+    height: 2px;
+    background-color: #4171e2;
+    border-radius: 2px;
     transform: scaleX(0);
-    transform-origin: center;
     transition: transform 0.2s ease;
 }
 
-.abas-navbar:hover::after {
-    transform: scaleX(0.3);
+.abas-navbar.active {
+    color: #4171e2;
 }
 
 .abas-navbar.active::after {
     transform: scaleX(1);
 }
 
-.abas-navbar.active {
-    color: rgb(65, 113, 226);
-}
-
-/* menu funcionarios */
-
-.menu-navbar {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 25px;
-}
+/* ===== PERFIL ===== */
 
 .perfil-container {
     position: relative;
-    flex: 1;
     display: flex;
-    justify-content: flex-end;
     align-items: center;
+    justify-content: flex-end;
+    flex: 0 0 auto;
 }
 
 .perfil-botao {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 8px 12px;
-    color: inherit;
-    background: none;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 6px 10px;
+    color: #374151;
+    background: transparent;
     border: none;
-    outline: none;
-    box-shadow: none;
+    border-radius: 10px;
     cursor: pointer;
     text-align: left;
     font: inherit;
-    border-radius: 15px;
+    transition: background-color 0.2s ease;
 }
 
 .perfil-botao:hover,
-.perfil-botao:active {
-    background: #eee;
+.perfil-botao.ativo {
+    background-color: #f3f4f6;
 }
 
-.perfil-botao.ativo {
-    background: #eee;
+.perfil {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+}
+
+.perfil-foto,
+.perfil-foto-padrao {
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+    border-radius: 50%;
+}
+
+.perfil-foto {
+    object-fit: cover;
+    border: 1px solid #e5e7eb;
+}
+
+.perfil-foto-padrao {
+    color: #4171e2;
 }
 
 .perfil-informacoes {
     display: flex;
     flex-direction: column;
-    gap: 3px;
+    gap: 2px;
 }
 
 .perfil-informacoes strong {
-    font-size: 14px;
+    font-size: 13px;
+    font-weight: 600;
 }
 
 .perfil-informacoes span {
-    font-size: 12px;
-    opacity: 0.7;
+    color: #6b7280;
+    font-size: 11px;
 }
 
-/*seta */
-
 .perfil-seta {
-    font-size: 18px;
     display: inline-block;
+    font-size: 16px;
     transition: transform 0.2s ease;
 }
 
@@ -116,170 +163,149 @@
     transform: rotate(180deg);
 }
 
-/* modal de menu */
-
-.perfil {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.perfil-foto {
-    width: 45px;
-    height: 45px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 1px solid #ccc;
-    flex-shrink: 0;
-}
-
-.perfil-foto-padrao {
-    width: 45px;
-    height: 45px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 1px solid #ccc;
-    flex-shrink: 0;
-    color: rgb(65, 113, 226);
-}
+/* ===== MENU DO PERFIL ===== */
 
 .perfil-menu {
     position: absolute;
     top: calc(100% + 8px);
     right: 0;
-    min-width: 170px;
+    min-width: 175px;
     padding: 5px;
-    background: white;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.10);
     z-index: 1000;
-    font-size: 13px;
 }
 
 .perfil-menu button {
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 10px;
     width: 100%;
-    padding: 11px 12px;
-    color: #777;
+    padding: 10px 12px;
+    color: #4b5563;
     background: transparent;
     border: none;
-    border-radius: 5px;
+    border-radius: 7px;
+    font-size: 13px;
     text-align: left;
     cursor: pointer;
+    transition: color 0.2s ease, background-color 0.2s ease;
 }
 
 .perfil-menu button:hover {
-    font-size: 14px;
-    color: rgb(65, 113, 226);
-    background: #eee;
+    color: #4171e2;
+    background-color: #f3f6ff;
 }
 
-/* =========================================================
-   RESPONSIVIDADE — NAVBAR DO SISTEMA
-   O menu quebra em linhas em telas intermediárias. Em celular,
-   os links continuam visíveis e podem ocupar mais de uma linha.
-   ========================================================= */
+/* ===== NOTEBOOKS E TABLETS ===== */
 
-.navbar > .container-fluid {
-    gap: 12px;
-    flex-wrap: wrap;
-    padding: 10px 1%;
-}
-
-.navbar .navbar-brand {
-    min-width: 130px;
-}
-
-.menu-navbar {
-    flex: 4 1 460px;
-    flex-wrap: wrap;
-    gap: 12px 20px;
-}
-
-.perfil-container {
-    flex: 1 1 190px;
-    min-width: 0;
-}
-
-/* Tablet e notebook estreito. */
-@media (max-width: 1000px) {
-    .navbar > .container-fluid {
-        justify-content: space-between;
-    }
-
-    .navbar .navbar-brand {
-        flex: 0 1 140px !important;
+@media (max-width: 1050px) {
+    .navbar > .container-fluid.navbar-conteudo {
+        flex-wrap: wrap;
+        gap: 8px 16px;
+        padding: 0 16px;
     }
 
     .navbar .navbar-brand img {
-        width: 140px !important;
-        height: auto !important;
+        width: 115px;
+        height: 40px;
     }
 
     .menu-navbar {
-        flex: 1 1 100% !important;
         order: 3;
+        flex: 1 1 100%;
         justify-content: center;
-        gap: 12px 18px;
-        padding: 8px 0;
-    }
-
-    .perfil-container {
-        flex: 0 1 210px;
-    }
-}
-
-/* Celular: menu em linhas e informações de perfil mais compactas. */
-@media (max-width: 600px) {
-    .navbar > .container-fluid {
-        padding: 10px 12px !important;
-        gap: 8px;
-    }
-
-    .navbar .navbar-brand {
-        flex: 1 1 100px !important;
-    }
-
-    .navbar .navbar-brand img {
-        width: 120px !important;
-        height: auto !important;
-    }
-
-    .menu-navbar {
-        flex: 1 1 100% !important;
-        justify-content: flex-start;
-        gap: 12px 16px;
+        flex-wrap: wrap;
+        gap: 2px 8px;
     }
 
     .abas-navbar {
+        padding: 10px 11px;
         font-size: 13px;
     }
 
     .perfil-container {
-        flex: 1 1 100%;
-        justify-content: flex-start;
+        margin-left: auto;
+    }
+}
+
+/* ===== CELULARES ===== */
+
+@media (max-width: 600px) {
+    .navbar {
+        padding: 8px 0;
+    }
+
+    .navbar > .container-fluid.navbar-conteudo {
+        padding: 0 12px;
+        gap: 8px;
+    }
+
+    .navbar .navbar-brand img {
+        width: 105px;
+        height: 36px;
     }
 
     .perfil-botao {
-        max-width: 100%;
-        padding: 6px 8px;
+        gap: 6px;
+        padding: 5px;
     }
 
     .perfil-foto,
     .perfil-foto-padrao {
-        width: 36px;
-        height: 36px;
+        width: 32px;
+        height: 32px;
+    }
+
+    .perfil-informacoes strong {
+        font-size: 12px;
+    }
+
+    .perfil-informacoes span {
+        font-size: 10px;
+    }
+
+    .menu-navbar {
+        justify-content: flex-start;
+        gap: 2px 5px;
+        padding: 3px 0;
+    }
+
+    .abas-navbar {
+        padding: 9px 8px;
+        font-size: 12px;
+    }
+
+    .abas-navbar::after {
+        bottom: 2px;
     }
 
     .perfil-menu {
-        left: 0;
-        right: auto;
+        right: 0;
+        min-width: 160px;
     }
 }
 
-/* Acessibilidade: hover não deve ampliar o link e mover os vizinhos. */
-.abas-navbar:hover,
-.perfil-menu button:hover {
-    font-size: inherit;
+/* ===== TELAS MUITO PEQUENAS ===== */
+
+@media (max-width: 360px) {
+    .navbar > .container-fluid.navbar-conteudo {
+        padding: 0 8px;
+    }
+
+    .navbar .navbar-brand img {
+        width: 90px;
+        height: 32px;
+    }
+
+    .perfil-informacoes {
+        display: none;
+    }
+
+    .abas-navbar {
+        padding: 8px 6px;
+        font-size: 11px;
+    }
 }

@@ -111,11 +111,9 @@ function Login() {
 
             {/* ESQUECI MINHA SENHA */}
             <div className="forgot-password">
-
-              <a href="#">
+              <Link to="/recuperar-senha">
                 Esqueci minha senha
-              </a>
-
+              </Link>
             </div>
 
 
