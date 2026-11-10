@@ -1,0 +1,285 @@
+
+/* Estrutura principal */
+
+.perfil-pagina {
+    width: 100%;
+    min-height: 100vh;
+    padding: 40px;
+    background: #f5f6f8;
+    display: flex;
+}
+
+.perfil-conteudo {
+    width: 100%;
+    min-height: calc(100vh - 80px);
+    padding: 40px;
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+.perfil-conteudo h2 {
+    margin-bottom: 35px;
+    font-size: 25px;
+    font-weight: 600;
+    color: #252525;
+}
+
+/* Foto, nome e cargo */
+
+.perfil-topo {
+    display: flex;
+    align-items: center;
+    gap: 30px;
+    margin-bottom: 25px;
+}
+
+.perfil-foto-editar {
+    position: relative;
+    width: 120px;
+    height: 120px;
+    min-width: 120px;
+    border-radius: 50%;
+    background: #e9edf2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: visible;
+    color: #777;
+    font-size: 75px;
+    cursor: pointer;
+    transition: filter 0.2s;
+}
+
+.perfil-foto-editar img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.perfil-foto-editar > span {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #2563eb;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    z-index: 2;
+}
+
+.perfil-foto-editar:hover {
+    filter: brightness(0.85);
+}
+
+/* Mensagem ao passar o mouse */
+
+.perfil-foto-editar::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: -45px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #252525;
+    color: white;
+    padding: 7px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: normal;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: 0.2s;
+    z-index: 10;
+}
+
+.perfil-foto-editar:hover::after {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Campos de nome e cargo */
+
+.perfil-campos-topo {
+    display: flex;
+    flex: 1;
+    gap: 20px;
+    min-width: 0;
+}
+
+/* Campos de edição */
+
+.campo-perfil {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+    margin-bottom: 22px;
+}
+
+.campo-perfil label {
+    margin-bottom: 8px;
+    color: #444;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.campo-perfil input {
+    width: 100%;
+    height: 45px;
+    padding: 0 12px;
+    border: 1px solid #d5d9df;
+    border-radius: 7px;
+    outline: none;
+    font-size: 14px;
+    transition: border-color 0.2s;
+}
+
+.campo-perfil input:focus {
+    border-color: #2563eb;
+}
+
+/* Campo de senha */
+
+.senha-container {
+    display: flex;
+    align-items: center;
+    border: 1px solid #d5d9df;
+    border-radius: 7px;
+}
+
+.senha-container:focus-within {
+    border-color: #2563eb;
+}
+
+.senha-container input {
+    border: none;
+}
+
+.senha-container button {
+    padding: 10px 15px;
+    border: none;
+    background: transparent;
+    color: #666;
+    cursor: pointer;
+}
+
+/* Histórico de logins */
+
+.historico-logins {
+    margin-top: 30px;
+}
+
+.historico-logins h3 {
+    margin-bottom: 15px;
+    font-size: 18px;
+    font-weight: 600;
+    color: #252525;
+}
+
+.historico-logins table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.historico-logins th,
+.historico-logins td {
+    padding: 13px;
+    text-align: left;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 14px;
+}
+
+.historico-logins th {
+    background: #f5f6f8;
+    font-weight: 600;
+    color: #444;
+}
+
+/* Mensagem de retorno */
+
+.perfil-mensagem {
+    margin-top: 15px;
+    color: #2563eb;
+    font-size: 14px;
+}
+
+/* Botões */
+
+.perfil-acoes {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 30px;
+}
+
+.perfil-acoes button {
+    padding: 11px 22px;
+    border: none;
+    border-radius: 7px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.botao-voltar {
+    background: #e5e7eb;
+    color: #333;
+}
+
+.botao-voltar:hover {
+    background: #d1d5db;
+}
+
+.botao-salvar {
+    background: #2563eb;
+    color: white;
+}
+
+.botao-salvar:hover {
+    background: #1d4ed8;
+}
+
+/* Responsividade */
+
+@media (max-width: 650px) {
+    .perfil-pagina {
+        padding: 20px 12px;
+    }
+
+    .perfil-conteudo {
+        padding: 22px 18px;
+    }
+
+    .perfil-topo {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .perfil-foto-editar {
+        align-self: center;
+    }
+
+    .perfil-campos-topo {
+        flex-direction: column;
+        gap: 0;
+    }
+
+    .historico-logins {
+        overflow-x: auto;
+    }
+
+    .historico-logins table {
+        min-width: 450px;
+    }
+
+    .perfil-acoes {
+        flex-wrap: wrap;
+    }
+}
