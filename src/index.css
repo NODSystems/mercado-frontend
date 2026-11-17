@@ -108,3 +108,55 @@ canvas {
         transition-duration: 0.01ms !important;
     }
 }
+
+/* =================================================
+   Alertas usados nas telas ligadas ao backend
+   ================================================= */
+.nod-alerta {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1.45;
+  border: 1px solid transparent;
+}
+
+.nod-alerta--erro {
+  color: #b91c1c;
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.nod-alerta--sucesso {
+  color: #166534;
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.nod-alerta--info {
+  color: #3159b8;
+  background: #edf3ff;
+  border-color: #d7e3ff;
+}
+
+/* Botão com aparência de link, usado dentro dos alertas */
+.nod-link-botao {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.nod-link-botao:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.login-content form > button[type="submit"]:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}

@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import '../../styles/empresa/ConfigurarEmpresa.css';
+import { api, mensagemDeErro } from '../../services/api';
 
 type DadosEmpresa = {
     nome: string;
@@ -52,6 +53,7 @@ function ConfigurarEmpresa() {
     const [dados, setDados] = useState<DadosEmpresa>(dadosIniciais);
     const [erro, setErro] = useState('');
     const [concluido, setConcluido] = useState(false);
+    const [salvando, setSalvando] = useState(false);
 
     function atualizarCampo(campo: keyof DadosEmpresa, valor: string) {
         setDados((anterior) => ({
@@ -93,9 +95,32 @@ function ConfigurarEmpresa() {
         setEtapa((anterior) => Math.min(anterior + 1, 3));
     }
 
-    function concluirCadastro() {
-        // Protótipo: os dados ainda não são enviados ao servidor.
-        setConcluido(true);
+    async function concluirCadastro() {
+        setErro('');
+        setSalvando(true);
+
+        try {
+            // Converte os campos da tela para o formato do backend.
+            await api.post('/empresas/criar', {
+                razao_social: dados.nome,
+                nome_fantasia: dados.nomeFantasia || null,
+                cnpj: dados.cnpj || null,
+                tipo_negocio: nomesTipos[tipoEmpresa] || 'Outro negócio',
+                telefone: dados.telefone,
+                email_comercial: dados.email,
+                cep: dados.cep,
+                estado: dados.estado,
+                cidade: dados.cidade,
+                rua: dados.endereco,
+                numero: dados.numero,
+            });
+
+            setConcluido(true);
+        } catch (e) {
+            setErro(mensagemDeErro(e));
+        } finally {
+            setSalvando(false);
+        }
     }
 
     function voltar() {
@@ -130,9 +155,9 @@ function ConfigurarEmpresa() {
                     <h1>Empresa configurada!</h1>
 
                     <p>
-                        Os dados de <strong>{dados.nomeFantasia.trim() || dados.nome}</strong>{' '}
-                        foram preenchidos. Como estamos na versão de demonstração,
-                        as informações ainda não foram salvas no servidor.
+                        <strong>{dados.nomeFantasia.trim() || dados.nome}</strong>{' '}
+                        foi cadastrada com sucesso. Abra a empresa na lista
+                        para começar a usar a NODSystems.
                     </p>
 
                     <button
@@ -424,11 +449,6 @@ function ConfigurarEmpresa() {
                                     <p><strong>CEP:</strong> {dados.cep}</p>
                                 </div>
 
-                                <p className="aviso-prototipo">
-                                    Esta é uma demonstração. Ao concluir,
-                                    os dados não serão enviados nem salvos
-                                    no banco de dados.
-                                </p>
                             </div>
                         )}
 
@@ -460,8 +480,9 @@ function ConfigurarEmpresa() {
                                     type="button"
                                     className="configurar-botao principal"
                                     onClick={concluirCadastro}
+                                    disabled={salvando}
                                 >
-                                    Concluir configuração
+                                    {salvando ? 'Salvando...' : 'Concluir configuração'}
                                 </button>
                             )}
                         </footer>

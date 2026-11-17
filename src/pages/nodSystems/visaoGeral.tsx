@@ -1,14 +1,17 @@
 import Carrossel from "../../components/carrosel";
+import { useAuth } from "../../contexts/AuthContext";
 import "../../App.css";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faGears, faWarning } from "@fortawesome/free-solid-svg-icons";
 
 function VisaoGeral() {
+    const { usuario } = useAuth();
+
     return (
         <div className="container-fluid" style={{ padding: "0 1%" }}>
             <div className="row">
                 <div className="col-12">
-                    <h2>Bem-vindo, Usuário!</h2>
+                    <h2>Bem-vindo, {usuario?.nome.split(" ")[0] ?? "Usuário"}!</h2>
                 </div>
             </div>
 

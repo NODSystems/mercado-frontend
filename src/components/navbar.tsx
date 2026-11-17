@@ -2,27 +2,46 @@ import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
+    faBuilding,
     faCircleUser,
     faRightFromBracket,
     faUserEdit,
 } from "@fortawesome/free-solid-svg-icons";
+
+import { useAuth } from "../contexts/AuthContext";
+import { nomeDoCargo } from "../services/api";
 
 import logo from "../assets/NodLogo(maior).jpeg";
 import "../styles/components/navbar.css";
 
 function Navbar() {
     const [menu, setMenu] = useState(false);
-    const [foto, setFoto] = useState<string | null>(null);
+    const { usuario, empresaAtual, sair: encerrarSessao } = useAuth();
+
+    // A foto ainda não é salva no backend: fica neste navegador (tela Perfil).
+    const [foto] = useState<string | null>(() => {
+        try {
+            return JSON.parse(localStorage.getItem("perfilNOD") || "{}").foto || null;
+        } catch {
+            return null;
+        }
+    });
 
     const navigate = useNavigate();
+
+    function trocarEmpresa() {
+        setMenu(false);
+        navigate("/minhas-empresas");
+    }
 
     function perfil() {
         setMenu(false);
         navigate("/perfil");
     }
 
-    function sair() {
+    async function sair() {
         setMenu(false);
+        await encerrarSessao();
         navigate("/login");
     }
 
@@ -78,8 +97,12 @@ function Navbar() {
                             )}
 
                             <div className="perfil-informacoes">
-                                <strong>Nome</strong>
-                                <span>Cargo</span>
+                                <strong>{usuario?.nome.split(" ")[0] ?? ""}</strong>
+                                <span>
+                                    {empresaAtual
+                                        ? `${nomeDoCargo(empresaAtual)} · ${empresaAtual.nome_fantasia || empresaAtual.razao_social}`
+                                        : ""}
+                                </span>
                             </div>
                         </div>
 
@@ -95,6 +118,11 @@ function Navbar() {
                             <button type="button" onClick={perfil}>
                                 <FontAwesomeIcon icon={faUserEdit} />
                                 Editar perfil
+                            </button>
+
+                            <button type="button" onClick={trocarEmpresa}>
+                                <FontAwesomeIcon icon={faBuilding} />
+                                Trocar de empresa
                             </button>
 
                             <button type="button" onClick={sair}>

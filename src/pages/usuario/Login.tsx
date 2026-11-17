@@ -1,5 +1,8 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useState, type FormEvent } from 'react'
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
+
+import { useAuth } from '../../contexts/AuthContext'
+import { api, ApiError, mensagemDeErro } from '../../services/api'
 
 import nodsystems from '../../assets/nodsystems.png'
 
@@ -12,6 +15,65 @@ function Login() {
 
   // Controla se a senha está visível ou escondida
   const [showPassword, setShowPassword] = useState(false)
+
+  const { usuario, carregando, entrar } = useAuth()
+  const navigate = useNavigate()
+  const [params] = useSearchParams()
+
+  // Página para onde voltar depois do login (ex.: aceitar convite)
+  const redirect = params.get('redirect') || '/minhas-empresas'
+
+  // Resultado do link de verificação de e-mail (?verificado=true/false)
+  const verificado = params.get('verificado')
+
+  const [email, setEmail] = useState('')
+  const [senha, setSenha] = useState('')
+  const [erro, setErro] = useState('')
+  const [enviando, setEnviando] = useState(false)
+  const [emailNaoVerificado, setEmailNaoVerificado] = useState(false)
+  const [reenvio, setReenvio] = useState('')
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    setErro('')
+    setReenvio('')
+    setEmailNaoVerificado(false)
+    setEnviando(true)
+
+    try {
+      await entrar(email, senha)
+      navigate(redirect, { replace: true })
+    } catch (e) {
+      setErro(mensagemDeErro(e))
+
+      // 403 = e-mail ainda não confirmado: oferece reenviar o link
+      if (e instanceof ApiError && e.status === 403 && /e-mail/i.test(e.message)) {
+        setEmailNaoVerificado(true)
+      }
+    } finally {
+      setEnviando(false)
+    }
+  }
+
+  async function reenviarVerificacao() {
+    setReenvio('enviando')
+
+    try {
+      const resposta = await api.post<{ mensagem: string }>(
+        '/auth/reenviar-verificacao',
+        { email },
+      )
+      setReenvio(resposta.mensagem)
+    } catch (e) {
+      setReenvio(mensagemDeErro(e))
+    }
+  }
+
+  // Já está logado: não precisa ver a tela de login
+  if (!carregando && usuario) {
+    return <Navigate to={redirect} replace />
+  }
 
   // O modificador --login permite identificar a página em seu CSS.
   return (
@@ -37,7 +99,45 @@ function Login() {
             Entre na sua conta para continuar.
           </p>
 
-          <form>
+          {verificado === 'true' && (
+            <div className="nod-alerta nod-alerta--sucesso" role="status">
+              E-mail confirmado! Agora é só entrar.
+            </div>
+          )}
+
+          {verificado === 'false' && (
+            <div className="nod-alerta nod-alerta--erro" role="alert">
+              O link de confirmação é inválido ou expirou. Faça login para
+              pedir um novo.
+            </div>
+          )}
+
+          {erro && (
+            <div className="nod-alerta nod-alerta--erro" role="alert">
+              {erro}
+
+              {emailNaoVerificado && (
+                <div style={{ marginTop: 8 }}>
+                  {reenvio && reenvio !== 'enviando' ? (
+                    reenvio
+                  ) : (
+                    <button
+                      type="button"
+                      className="nod-link-botao"
+                      onClick={reenviarVerificacao}
+                      disabled={reenvio === 'enviando'}
+                    >
+                      {reenvio === 'enviando'
+                        ? 'Enviando...'
+                        : 'Reenviar e-mail de confirmação'}
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit}>
 
             {/* CAMPO DE E-MAIL */}
             <label>
@@ -46,6 +146,10 @@ function Login() {
               <input
                 type="email"
                 placeholder="Digite seu e-mail"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
+                required
               />
             </label>
 
@@ -59,6 +163,10 @@ function Login() {
                 <input
                   type={showPassword ? 'text' : 'password'}
                   placeholder="Digite sua senha"
+                  value={senha}
+                  onChange={(e) => setSenha(e.target.value)}
+                  autoComplete="current-password"
+                  required
                 />
 
                 {/* Botão para mostrar/esconder a senha */}
@@ -118,8 +226,8 @@ function Login() {
 
 
             {/* BOTÃO ENTRAR */}
-            <button type="submit">
-              Entrar
+            <button type="submit" disabled={enviando}>
+              {enviando ? 'Entrando...' : 'Entrar'}
             </button>
 
           </form>
@@ -130,7 +238,7 @@ function Login() {
 
             Não possui uma conta?{' '}
 
-            <Link to="/cadastro">
+            <Link to={`/cadastro${params.get('redirect') ? `?redirect=${encodeURIComponent(redirect)}` : ''}`}>
               Cadastre-se
             </Link>
 
