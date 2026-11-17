@@ -1,5 +1,6 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useState, type FormEvent } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { api, mensagemDeErro } from '../../services/api'
 import nodsystems from '../../assets/nodsystems.png'
 import GrowthBackground from '../../components/GrowthBackground'
 
@@ -14,6 +15,108 @@ function Cadastro() {
 
   // Controla a visibilidade da confirmação da senha
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+
+  const [params] = useSearchParams()
+  const redirect = params.get('redirect')
+
+  const [nome, setNome] = useState('')
+  const [email, setEmail] = useState('')
+  const [senha, setSenha] = useState('')
+  const [confirmarSenha, setConfirmarSenha] = useState('')
+  const [erro, setErro] = useState('')
+  const [enviando, setEnviando] = useState(false)
+
+  // Mensagem do backend depois do cadastro
+  const [sucesso, setSucesso] = useState('')
+  const [reenvio, setReenvio] = useState('')
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setErro('')
+
+    if (senha !== confirmarSenha) {
+      setErro('As senhas não conferem.')
+      return
+    }
+
+    setEnviando(true)
+
+    try {
+      const resposta = await api.post<{ mensagem: string }>(
+        '/auth/cadastrar',
+        { nome, email, senha },
+      )
+      setSucesso(resposta.mensagem)
+    } catch (e) {
+      setErro(mensagemDeErro(e))
+    } finally {
+      setEnviando(false)
+    }
+  }
+
+  async function reenviarVerificacao() {
+    setReenvio('enviando')
+
+    try {
+      const resposta = await api.post<{ mensagem: string }>(
+        '/auth/reenviar-verificacao',
+        { email },
+      )
+      setReenvio(resposta.mensagem)
+    } catch (e) {
+      setReenvio(mensagemDeErro(e))
+    }
+  }
+
+  const linkLogin = `/login${redirect ? `?redirect=${encodeURIComponent(redirect)}` : ''}`
+
+  // Cadastro feito: pede para confirmar o e-mail
+  if (sucesso) {
+    return (
+      <main className="login-page login-page--cadastro">
+        <section className="login-form">
+          <img src={nodsystems} alt="NODSystems" className="login-logo" />
+
+          <div className="login-content">
+            <h1>Confirme seu e-mail</h1>
+
+            <div className="nod-alerta nod-alerta--sucesso" role="status">
+              {sucesso}
+            </div>
+
+            <p>
+              Abra o link enviado para <strong>{email}</strong> e depois
+              faça login. O link expira em 30 minutos.
+            </p>
+
+            <p>
+              Não recebeu?{' '}
+              {reenvio && reenvio !== 'enviando' ? (
+                <span>{reenvio}</span>
+              ) : (
+                <button
+                  type="button"
+                  className="nod-link-botao"
+                  onClick={reenviarVerificacao}
+                  disabled={reenvio === 'enviando'}
+                >
+                  {reenvio === 'enviando' ? 'Enviando...' : 'Reenviar e-mail'}
+                </button>
+              )}
+            </p>
+
+            <span className="register-link">
+              <Link to={linkLogin}>Ir para o login</Link>
+            </span>
+          </div>
+        </section>
+
+        <section className="login-visual">
+          <GrowthBackground />
+        </section>
+      </main>
+    )
+  }
 
   // O modificador --cadastro permite identificar a página em seu CSS.
   return (
@@ -39,7 +142,13 @@ function Cadastro() {
             Cadastre-se para começar.
           </p>
 
-          <form>
+          {erro && (
+            <div className="nod-alerta nod-alerta--erro" role="alert">
+              {erro}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit}>
 
             {/* CAMPO DE NOME */}
             <label>
@@ -48,6 +157,10 @@ function Cadastro() {
               <input
                 type="text"
                 placeholder="Digite seu nome completo"
+                value={nome}
+                onChange={(e) => setNome(e.target.value)}
+                autoComplete="name"
+                required
               />
             </label>
 
@@ -59,6 +172,10 @@ function Cadastro() {
               <input
                 type="email"
                 placeholder="Digite seu e-mail"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
+                required
               />
             </label>
 
@@ -73,7 +190,12 @@ function Cadastro() {
 
                 <input
                   type={showPassword ? 'text' : 'password'}
-                  placeholder="Digite sua senha"
+                  placeholder="Mínimo de 8 caracteres"
+                  value={senha}
+                  onChange={(e) => setSenha(e.target.value)}
+                  autoComplete="new-password"
+                  minLength={8}
+                  required
                 />
 
                 {/* Botão do olho */}
@@ -151,6 +273,10 @@ function Cadastro() {
                       : 'password'
                   }
                   placeholder="Digite sua senha novamente"
+                  value={confirmarSenha}
+                  onChange={(e) => setConfirmarSenha(e.target.value)}
+                  autoComplete="new-password"
+                  required
                 />
 
                 {/* Botão do olho */}
@@ -216,8 +342,8 @@ function Cadastro() {
 
 
             {/* BOTÃO DE CADASTRO */}
-            <button type="submit">
-              Criar minha conta
+            <button type="submit" disabled={enviando}>
+              {enviando ? 'Criando conta...' : 'Criar minha conta'}
             </button>
 
           </form>
@@ -228,7 +354,7 @@ function Cadastro() {
 
             Já possui uma conta?{' '}
 
-            <Link to="/login">
+            <Link to={linkLogin}>
               Entrar
             </Link>
 

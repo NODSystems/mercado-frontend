@@ -1,5 +1,5 @@
-// Importa o useState para controlar os funcionários cadastrados.
-import { useState, type FormEvent } from "react";
+// Importa os hooks do React.
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 
 // Importa os ícones utilizados na tela.
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -7,36 +7,38 @@ import {
     faUsers,
     faUserPlus,
     faMagnifyingGlass,
-    faTrash,
     faUserTie,
 } from "@fortawesome/free-solid-svg-icons";
+
+// Integração com o backend.
+import { useAuth } from "../../contexts/AuthContext";
+import {
+    api,
+    mensagemDeErro,
+    type Cargo,
+    type Funcionario,
+} from "../../services/api";
 
 // Importa o CSS exclusivo da página.
 import "../../styles/nodSystems/Equipe.css";
 
-// Define os dados que cada funcionário precisa ter.
-interface Funcionario {
-    id: number;
-    nome: string;
-    email: string;
-    telefone: string;
-    cargo: string;
-    status: "Ativo" | "Inativo";
-}
-
-// Cargos disponíveis para os funcionários.
-const cargos = [
-    "Administrador",
-    "Gerente",
-    "Vendedor",
-    "Estoquista",
-    "Atendente",
-];
+// Texto exibido para cada status do backend.
+const nomesStatus: Record<Funcionario["status"], string> = {
+    CONVIDADO: "Convite enviado",
+    ATIVO: "Ativo",
+    INATIVO: "Inativo",
+};
 
 // Página de gerenciamento da equipe.
 function Equipe() {
-    // Guarda os funcionários cadastrados.
+    const { empresaAtual } = useAuth();
+    const empresaId = empresaAtual?.id;
+
+    // Funcionários e cargos vindos do backend.
     const [funcionarios, setFuncionarios] = useState<Funcionario[]>([]);
+    const [cargos, setCargos] = useState<Cargo[]>([]);
+    const [carregando, setCarregando] = useState(true);
+    const [erroLista, setErroLista] = useState("");
 
     // Controla a abertura e o fechamento do formulário.
     const [mostrarFormulario, setMostrarFormulario] = useState(false);
@@ -45,7 +47,8 @@ function Equipe() {
     const [nome, setNome] = useState("");
     const [email, setEmail] = useState("");
     const [telefone, setTelefone] = useState("");
-    const [cargo, setCargo] = useState("Vendedor");
+    const [cargoId, setCargoId] = useState("");
+    const [enviando, setEnviando] = useState(false);
 
     // Controla a pesquisa e o filtro por cargo.
     const [pesquisa, setPesquisa] = useState("");
@@ -54,9 +57,39 @@ function Equipe() {
     // Guarda mensagens de sucesso ou validação.
     const [mensagem, setMensagem] = useState("");
 
+    // Busca a lista de funcionários da empresa selecionada.
+    const carregarFuncionarios = useCallback(async () => {
+        if (!empresaId) return;
+
+        try {
+            const resposta = await api.get<{ funcionarios: Funcionario[] }>(
+                `/empresas/${empresaId}/funcionarios`
+            );
+            setFuncionarios(resposta.funcionarios);
+            setErroLista("");
+        } catch (erro) {
+            setErroLista(mensagemDeErro(erro));
+        }
+    }, [empresaId]);
+
+    useEffect(() => {
+        if (!empresaId) return;
+
+        // Cargos disponíveis para o formulário de convite.
+        api.get<{ cargos: Cargo[] }>(`/empresas/${empresaId}/cargos`)
+            .then((resposta) => {
+                setCargos(resposta.cargos);
+                const vendedor = resposta.cargos.find((c) => c.nome === "Vendedor");
+                setCargoId(String((vendedor ?? resposta.cargos[0])?.id ?? ""));
+            })
+            .catch(() => setCargos([]));
+
+        carregarFuncionarios().finally(() => setCarregando(false));
+    }, [empresaId, carregarFuncionarios]);
+
     // Calcula quantos funcionários estão ativos.
     const totalAtivos = funcionarios.filter(
-        (funcionario) => funcionario.status === "Ativo"
+        (funcionario) => funcionario.status === "ATIVO"
     ).length;
 
     // Filtra os funcionários de acordo com a pesquisa e o cargo.
@@ -71,56 +104,45 @@ function Equipe() {
         return correspondePesquisa && correspondeCargo;
     });
 
-    // Cadastra um funcionário com os dados do formulário.
-    function cadastrarFuncionario(evento: FormEvent<HTMLFormElement>) {
+    // Envia o convite por e-mail. A pessoa entra na equipe quando aceitar.
+    async function cadastrarFuncionario(evento: FormEvent<HTMLFormElement>) {
         evento.preventDefault();
 
-        // Impede o cadastro sem nome ou e-mail válido.
         if (!nome.trim() || !email.trim()) {
             setMensagem("Preencha o nome e o e-mail do funcionário.");
             return;
         }
 
-        // Verifica se o e-mail já está cadastrado.
-        const emailExiste = funcionarios.some(
-            (funcionario) =>
-                funcionario.email.toLowerCase() === email.trim().toLowerCase()
-        );
+        if (!empresaId) return;
 
-        if (emailExiste) {
-            setMensagem("Já existe um funcionário cadastrado com esse e-mail.");
-            return;
+        setEnviando(true);
+        setMensagem("");
+
+        try {
+            await api.post(`/empresas/${empresaId}/funcionarios/convidar`, {
+                nome: nome.trim(),
+                email: email.trim(),
+                telefone: telefone.trim() || null,
+                cargoId: Number(cargoId),
+            });
+
+            const enviadoPara = email.trim();
+
+            // Limpa o formulário após o envio.
+            setNome("");
+            setEmail("");
+            setTelefone("");
+            setMostrarFormulario(false);
+            setMensagem(
+                `Convite enviado para ${enviadoPara}. A pessoa entra na equipe ao aceitar pelo e-mail.`
+            );
+
+            await carregarFuncionarios();
+        } catch (erro) {
+            setMensagem(mensagemDeErro(erro));
+        } finally {
+            setEnviando(false);
         }
-
-        // Cria o novo funcionário com os dados preenchidos.
-        const novoFuncionario: Funcionario = {
-            id: Date.now(),
-            nome: nome.trim(),
-            email: email.trim(),
-            telefone: telefone.trim(),
-            cargo,
-            status: "Ativo",
-        };
-
-        // Adiciona o funcionário à lista.
-        setFuncionarios((atuais) => [...atuais, novoFuncionario]);
-
-        // Limpa o formulário após o cadastro.
-        setNome("");
-        setEmail("");
-        setTelefone("");
-        setCargo("Vendedor");
-        setMostrarFormulario(false);
-        setMensagem("Funcionário cadastrado com sucesso!");
-    }
-
-    // Remove um funcionário da lista pelo identificador.
-    function excluirFuncionario(id: number) {
-        setFuncionarios((atuais) =>
-            atuais.filter((funcionario) => funcionario.id !== id)
-        );
-
-        setMensagem("Funcionário removido da lista.");
     }
 
     return (
@@ -182,8 +204,11 @@ function Equipe() {
                     className="equipe-formulario"
                     onSubmit={cadastrarFuncionario}
                 >
-                    <h2>Cadastrar funcionário</h2>
-                    <p>Preencha os dados para adicionar uma pessoa à equipe.</p>
+                    <h2>Convidar funcionário</h2>
+                    <p>
+                        A pessoa recebe um convite por e-mail e entra na equipe
+                        quando aceitar.
+                    </p>
 
                     <div className="equipe-formulario-grid">
                         <label>
@@ -221,12 +246,13 @@ function Equipe() {
                         <label>
                             Cargo
                             <select
-                                value={cargo}
-                                onChange={(evento) => setCargo(evento.target.value)}
+                                value={cargoId}
+                                onChange={(evento) => setCargoId(evento.target.value)}
+                                required
                             >
                                 {cargos.map((opcao) => (
-                                    <option key={opcao} value={opcao}>
-                                        {opcao}
+                                    <option key={opcao.id} value={opcao.id}>
+                                        {opcao.nome}
                                     </option>
                                 ))}
                             </select>
@@ -246,8 +272,12 @@ function Equipe() {
                             Cancelar
                         </button>
 
-                        <button type="submit" className="equipe-botao-principal">
-                            Cadastrar funcionário
+                        <button
+                            type="submit"
+                            className="equipe-botao-principal"
+                            disabled={enviando}
+                        >
+                            {enviando ? "Enviando..." : "Enviar convite"}
                         </button>
                     </div>
                 </form>
@@ -281,16 +311,26 @@ function Equipe() {
                         >
                             <option value="Todos">Todos os cargos</option>
                             {cargos.map((opcao) => (
-                                <option key={opcao} value={opcao}>
-                                    {opcao}
+                                <option key={opcao.id} value={opcao.nome}>
+                                    {opcao.nome}
                                 </option>
                             ))}
                         </select>
                     </div>
                 </div>
 
+                {erroLista && (
+                    <div className="nod-alerta nod-alerta--erro" role="alert">
+                        {erroLista}
+                    </div>
+                )}
+
                 {/* Exibe uma mensagem se não houver resultados. */}
-                {funcionariosFiltrados.length === 0 ? (
+                {carregando ? (
+                    <div className="equipe-vazio">
+                        <p>Carregando equipe...</p>
+                    </div>
+                ) : funcionariosFiltrados.length === 0 ? (
                     <div className="equipe-vazio">
                         <FontAwesomeIcon icon={faUsers} />
                         <h3>
@@ -300,7 +340,7 @@ function Equipe() {
                         </h3>
                         <p>
                             {funcionarios.length === 0
-                                ? "Clique em Novo funcionário para começar."
+                                ? "Clique em Novo funcionário para enviar um convite."
                                 : "Tente alterar a pesquisa ou o filtro de cargo."}
                         </p>
                     </div>
@@ -314,7 +354,6 @@ function Equipe() {
                                     <th>Contato</th>
                                     <th>Cargo</th>
                                     <th>Status</th>
-                                    <th>Ações</th>
                                 </tr>
                             </thead>
 
@@ -342,26 +381,12 @@ function Equipe() {
                                             </div>
                                         </td>
 
-                                        <td>{funcionario.cargo}</td>
+                                        <td>{funcionario.cargo || "—"}</td>
 
                                         <td>
                                             <span className="equipe-status">
-                                                {funcionario.status}
+                                                {nomesStatus[funcionario.status]}
                                             </span>
-                                        </td>
-
-                                        <td>
-                                            <button
-                                                type="button"
-                                                className="equipe-botao-excluir"
-                                                onClick={() =>
-                                                    excluirFuncionario(funcionario.id)
-                                                }
-                                                aria-label={`Excluir ${funcionario.nome}`}
-                                                title="Excluir funcionário"
-                                            >
-                                                <FontAwesomeIcon icon={faTrash} />
-                                            </button>
                                         </td>
                                     </tr>
                                 ))}

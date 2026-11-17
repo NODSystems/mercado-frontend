@@ -1,5 +1,5 @@
 
-import { useState, type ChangeEvent } from "react";
+import { useEffect, useState, type ChangeEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -10,25 +10,78 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 
 import "../../styles/usuario/perfil.css";
+import { useAuth } from "../../contexts/AuthContext";
+import { api, mensagemDeErro, nomeDoCargo, type Sessao } from "../../services/api";
+
+// Transforma o "user agent" do navegador em algo legível (ex.: "Windows - Chrome")
+function descreverDispositivo(userAgent: string | null): string {
+    if (!userAgent) return "Desconhecido";
+
+    const sistema =
+        /Android/i.test(userAgent) ? "Android" :
+        /iPhone|iPad/i.test(userAgent) ? "iOS" :
+        /Windows/i.test(userAgent) ? "Windows" :
+        /Mac OS/i.test(userAgent) ? "macOS" :
+        /Linux/i.test(userAgent) ? "Linux" : "";
+
+    const navegador =
+        /Edg\//i.test(userAgent) ? "Edge" :
+        /OPR\//i.test(userAgent) ? "Opera" :
+        /Chrome\//i.test(userAgent) ? "Chrome" :
+        /Firefox\//i.test(userAgent) ? "Firefox" :
+        /Safari\//i.test(userAgent) ? "Safari" : "";
+
+    if (!sistema && !navegador) return userAgent.slice(0, 40);
+
+    return [sistema, navegador].filter(Boolean).join(" - ");
+}
 
 function Perfil() {
     const navigate = useNavigate();
 
-    const dadosSalvos = JSON.parse(localStorage.getItem("perfilNOD") || "{}");
+    const { usuario, empresaAtual, recarregarUsuario } = useAuth();
 
-    const [nome, setNome] = useState(dadosSalvos.nome || "Nome");
-    const [cargo, setCargo] = useState(dadosSalvos.cargo || "Cargo");
-    const [email, setEmail] = useState(dadosSalvos.email || "email@nodsystems.com");
+    // A foto ainda não tem rota no backend: fica salva neste navegador.
+    const dadosSalvos = (() => {
+        try {
+            return JSON.parse(localStorage.getItem("perfilNOD") || "{}");
+        } catch {
+            return {};
+        }
+    })();
+
+    const [nome, setNome] = useState(usuario?.nome ?? "");
+    const cargo = empresaAtual ? nomeDoCargo(empresaAtual) : "Sem empresa selecionada";
+    const email = usuario?.email ?? "";
     const [foto, setFoto] = useState<string | null>(dadosSalvos.foto || null);
+    const [senhaAtual, setSenhaAtual] = useState("");
     const [senha, setSenha] = useState("");
     const [mostrarSenha, setMostrarSenha] = useState(false);
     const [mensagem, setMensagem] = useState("");
+    const [salvando, setSalvando] = useState(false);
 
-    const logins = [
-        { data: "10/11/2026", horario: "09:30", dispositivo: "Windows - Chrome" },
-        { data: "09/11/2026", horario: "14:20", dispositivo: "Windows - Chrome" },
-        { data: "08/11/2026", horario: "08:15", dispositivo: "Android - Chrome" }
-    ];
+    // Últimos logins = sessões registradas no backend
+    const [sessoes, setSessoes] = useState<Sessao[]>([]);
+
+    useEffect(() => {
+        api.get<Sessao[]>("/auth/sessoes")
+            .then((lista) => setSessoes(
+                [...lista]
+                    .sort((a, b) => b.created_at.localeCompare(a.created_at))
+                    .slice(0, 5)
+            ))
+            .catch(() => setSessoes([]));
+    }, []);
+
+    const logins = sessoes.map((sessao) => {
+        const data = new Date(sessao.created_at);
+
+        return {
+            data: data.toLocaleDateString("pt-BR"),
+            horario: data.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+            dispositivo: descreverDispositivo(sessao.user_agent)
+        };
+    });
 
     function alterarFoto(event: ChangeEvent<HTMLInputElement>) {
         const arquivo = event.target.files?.[0];
@@ -44,20 +97,47 @@ function Perfil() {
         }
     }
 
-    function salvar() {
-        if (!nome.trim() || !cargo.trim() || !email.trim()) {
-            setMensagem("Preencha todos os campos obrigatórios.");
+    async function salvar() {
+        setMensagem("");
+
+        if (!nome.trim()) {
+            setMensagem("Informe seu nome.");
             return;
         }
 
-        localStorage.setItem("perfilNOD", JSON.stringify({
-            nome,
-            cargo,
-            email,
-            foto
-        }));
+        if (senha && !senhaAtual) {
+            setMensagem("Para trocar a senha, informe também a senha atual.");
+            return;
+        }
 
-        setMensagem("Perfil atualizado com sucesso!");
+        setSalvando(true);
+
+        try {
+            if (nome.trim() !== usuario?.nome) {
+                await api.put("/auth/editar", { nome });
+            }
+
+            // Trocar senha exige confirmar a senha atual (reautenticação)
+            if (senha) {
+                await api.post("/auth/reauth", { senhaAtual });
+                await api.put("/auth/alterar-senha", { senhaNova: senha });
+                setSenha("");
+                setSenhaAtual("");
+            }
+
+            try {
+                localStorage.setItem("perfilNOD", JSON.stringify({ foto }));
+            } catch {
+                // Foto grande demais para o navegador: ignora
+            }
+
+            await recarregarUsuario();
+            setMensagem("Perfil atualizado com sucesso!");
+        } catch (e) {
+            setMensagem(mensagemDeErro(e));
+        } finally {
+            setSalvando(false);
+        }
     }
 
     return (
@@ -108,7 +188,8 @@ function Perfil() {
                             <input
                                 type="text"
                                 value={cargo}
-                                onChange={e => setCargo(e.target.value)}
+                                readOnly
+                                title="O cargo é definido pela empresa"
                             />
                         </div>
 
@@ -121,20 +202,34 @@ function Perfil() {
                     <input
                         type="email"
                         value={email}
-                        onChange={e => setEmail(e.target.value)}
+                        readOnly
+                        title="A troca de e-mail ainda não está disponível"
                     />
                 </div>
 
-                {/* Senha */}
+                {/* Senha atual (necessária para trocar a senha) */}
                 <div className="campo-perfil">
-                    <label>Senha</label>
+                    <label>Senha atual</label>
+                    <input
+                        type={mostrarSenha ? "text" : "password"}
+                        value={senhaAtual}
+                        placeholder="Preencha só se for trocar a senha"
+                        onChange={e => setSenhaAtual(e.target.value)}
+                        autoComplete="current-password"
+                    />
+                </div>
+
+                {/* Nova senha */}
+                <div className="campo-perfil">
+                    <label>Nova senha</label>
 
                     <div className="senha-container">
                         <input
                             type={mostrarSenha ? "text" : "password"}
                             value={senha}
-                            placeholder="Digite uma nova senha"
+                            placeholder="Mínimo de 8 caracteres"
                             onChange={e => setSenha(e.target.value)}
+                            autoComplete="new-password"
                         />
 
                         <button
@@ -162,6 +257,11 @@ function Perfil() {
                         </thead>
 
                         <tbody>
+                            {logins.length === 0 && (
+                                <tr>
+                                    <td colSpan={3}>Nenhum login encontrado.</td>
+                                </tr>
+                            )}
                             {logins.map((login, index) => (
                                 <tr key={index}>
                                     <td>{login.data}</td>
@@ -190,8 +290,9 @@ function Perfil() {
                     <button
                         className="botao-salvar"
                         onClick={salvar}
+                        disabled={salvando}
                     >
-                        Salvar alterações
+                        {salvando ? "Salvando..." : "Salvar alterações"}
                     </button>
                 </div>
 
