@@ -46,7 +46,7 @@
     padding: 12px 17px;
     border: none;
     border-radius: 9px;
-    background: #217346;
+    background: var(--cor-primaria);
     color: #fff;
     font-size: 13px;
     font-weight: 650;
@@ -55,8 +55,35 @@
 }
 
 .relatorios-exportar:hover {
-    background: #185c37;
+    background: var(--cor-primaria-hover);
     transform: translateY(-1px);
+}
+
+.relatorios-exportar:disabled {
+    opacity: 0.7;
+    cursor: wait;
+    transform: none;
+}
+
+.relatorios-exportar-grupo {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+/* Excel: botão secundário com o verde do Excel no ícone */
+.relatorios-exportar--secundario {
+    background: #fff;
+    color: #1f2937;
+    border: 1px solid #d1d5db;
+}
+
+.relatorios-exportar--secundario svg {
+    color: #217346;
+}
+
+.relatorios-exportar--secundario:hover {
+    background: #f9fafb;
 }
 
 /* Área dos filtros */

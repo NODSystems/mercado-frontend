@@ -1,12 +1,12 @@
 
 import { useMemo, useState } from 'react';
-import * as XLSX from 'xlsx';
 import {
     faChartLine,
     faShoppingCart,
     faBoxesStacked,
     faWallet,
     faFileExcel,
+    faFilePdf,
     faArrowTrendUp,
     faArrowTrendDown,
     faCalendarDays,
@@ -14,71 +14,41 @@ import {
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import '../../styles/nodSystems/Relatorios.css';
 
-// Estrutura dos dados usados nos relatórios.
-type Venda = {
-    data: string;
-    produto: string;
-    quantidade: number;
-    valor: number;
-    pagamento: string;
+import { useAuth } from '../../contexts/AuthContext';
+import {
+    dataBR as dataFormatada,
+    ESTA_EM_DEMONSTRACAO,
+    estoqueDemonstracao,
+    financeiroDemonstracao,
+    moeda,
+    vendasDemonstracao,
+} from '../../data/demonstracao';
+import { calcularRelatorio } from '../../services/relatorio';
+
+const nomesPeriodo: Record<string, string> = {
+    hoje: 'Hoje',
+    '7dias': 'Últimos 7 dias',
+    mes: 'Este mês',
+    personalizado: 'Período personalizado',
 };
 
-type MovimentoFinanceiro = {
-    data: string;
-    descricao: string;
-    tipo: 'Entrada' | 'Saída';
-    categoria: string;
-    valor: number;
-};
+// Quantas vendas mostrar na tabela da tela (o arquivo exportado leva todas)
+const LIMITE_TABELA = 50;
 
-type ProdutoEstoque = {
-    nome: string;
-    quantidade: number;
-    minimo: number;
-};
-
-// Dados de demonstração.
-// Posteriormente, serão substituídos pelos dados reais do backend.
-const vendasExemplo: Venda[] = [
-    { data: '2026-10-02', produto: 'Arroz 5kg', quantidade: 2, valor: 50, pagamento: 'Pix' },
-    { data: '2026-10-05', produto: 'Feijão 1kg', quantidade: 3, valor: 27, pagamento: 'Dinheiro' },
-    { data: '2026-10-10', produto: 'Óleo 900ml', quantidade: 4, valor: 32, pagamento: 'Cartão' },
-    { data: '2026-10-15', produto: 'Leite 1L', quantidade: 5, valor: 30, pagamento: 'Pix' },
-    { data: '2026-10-20', produto: 'Café 500g', quantidade: 2, valor: 36, pagamento: 'Cartão' },
-];
-
-const financeiroExemplo: MovimentoFinanceiro[] = [
-    { data: '2026-10-02', descricao: 'Venda de produtos', tipo: 'Entrada', categoria: 'Vendas', valor: 50 },
-    { data: '2026-10-04', descricao: 'Compra de mercadorias', tipo: 'Saída', categoria: 'Estoque', valor: 120 },
-    { data: '2026-10-10', descricao: 'Venda de produtos', tipo: 'Entrada', categoria: 'Vendas', valor: 32 },
-    { data: '2026-10-15', descricao: 'Conta de energia', tipo: 'Saída', categoria: 'Contas', valor: 90 },
-    { data: '2026-10-20', descricao: 'Venda de produtos', tipo: 'Entrada', categoria: 'Vendas', valor: 36 },
-];
-
-const estoqueExemplo: ProdutoEstoque[] = [
-    { nome: 'Arroz 5kg', quantidade: 18, minimo: 5 },
-    { nome: 'Feijão 1kg', quantidade: 3, minimo: 8 },
-    { nome: 'Óleo 900ml', quantidade: 12, minimo: 5 },
-    { nome: 'Leite 1L', quantidade: 4, minimo: 10 },
-    { nome: 'Café 500g', quantidade: 15, minimo: 5 },
-];
-
-// Converte números em valores monetários brasileiros.
-const moeda = (valor: number) =>
-    valor.toLocaleString('pt-BR', {
-        style: 'currency',
-        currency: 'BRL',
-    });
-
-// Converte uma data para o formato brasileiro.
-const dataFormatada = (data: string) =>
-    new Date(`${data}T12:00:00`).toLocaleDateString('pt-BR');
+function hojeISO() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 
 function Relatorios() {
+    const { usuario, empresaAtual } = useAuth();
+
     // Controla o filtro de período selecionado.
     const [periodo, setPeriodo] = useState('mes');
-    const [dataInicial, setDataInicial] = useState('2026-10-01');
-    const [dataFinal, setDataFinal] = useState('2026-10-31');
+    const [dataInicial, setDataInicial] = useState(`${hojeISO().slice(0, 8)}01`);
+    const [dataFinal, setDataFinal] = useState(hojeISO());
+    const [exportando, setExportando] = useState<'' | 'pdf' | 'excel'>('');
+    const [erroExportar, setErroExportar] = useState('');
 
     // Calcula as datas inicial e final do relatório.
     const intervalo = useMemo(() => {
@@ -95,112 +65,58 @@ function Relatorios() {
             fim = hoje;
         } else if (periodo === 'personalizado') {
             inicio = new Date(`${dataInicial}T00:00:00`);
-            fim = new Date(`${dataFinal}T23:59:59`);
+            fim = new Date(`${dataFinal}T00:00:00`);
         }
+
+        // "Este mês" vai só até hoje (dias futuros não têm movimento)
+        if (fim > hoje) fim = new Date(hoje);
 
         return { inicio, fim };
     }, [periodo, dataInicial, dataFinal]);
 
-    // Verifica se um registro pertence ao intervalo escolhido.
-    const dentroDoPeriodo = (data: string) => {
-        const dataRegistro = new Date(`${data}T12:00:00`);
-        return dataRegistro >= intervalo.inicio && dataRegistro <= intervalo.fim;
-    };
+    // Todos os números saem daqui: a tela e os arquivos usam os mesmos
+    const relatorio = useMemo(() => calcularRelatorio({
+        vendas: vendasDemonstracao(),
+        movimentos: financeiroDemonstracao(),
+        estoque: estoqueDemonstracao(),
+        inicio: intervalo.inicio,
+        fim: intervalo.fim,
+        empresa: empresaAtual?.nome_fantasia || empresaAtual?.razao_social || 'Minha empresa',
+        usuario: usuario?.nome ?? '',
+        periodoTexto: nomesPeriodo[periodo],
+        demonstracao: ESTA_EM_DEMONSTRACAO,
+    }), [intervalo, empresaAtual, usuario, periodo]);
 
-    // Filtra as vendas e movimentações financeiras pelo período.
-    const vendas = vendasExemplo.filter((venda) => dentroDoPeriodo(venda.data));
-    const movimentos = financeiroExemplo.filter((item) => dentroDoPeriodo(item.data));
+    const vendas = relatorio.vendas;
+    const totalVendas = relatorio.totais.vendas;
+    const totalEntradas = relatorio.totais.entradas;
+    const totalDespesas = relatorio.totais.despesas;
+    const resultado = relatorio.totais.resultado;
+    const ticketMedio = relatorio.totais.ticket;
+    const estoqueTodo = relatorio.estoque;
+    const estoqueBaixo = estoqueTodo.filter((produto) => produto.quantidade <= produto.minimo);
+    const vendasRecentes = [...vendas].reverse().slice(0, LIMITE_TABELA);
 
-    // Calcula os totais apresentados na tela.
-    const totalVendas = vendas.reduce((total, venda) => total + venda.valor, 0);
+    // As bibliotecas de PDF e Excel só são baixadas quando a pessoa clica
+    async function exportar(tipo: 'pdf' | 'excel') {
+        setErroExportar('');
+        setExportando(tipo);
 
-    const totalEntradas = movimentos
-        .filter((item) => item.tipo === 'Entrada')
-        .reduce((total, item) => total + item.valor, 0);
-
-    const totalDespesas = movimentos
-        .filter((item) => item.tipo === 'Saída')
-        .reduce((total, item) => total + item.valor, 0);
-
-    const resultado = totalEntradas - totalDespesas;
-    const ticketMedio = vendas.length > 0 ? totalVendas / vendas.length : 0;
-
-    // Identifica produtos cuja quantidade está no limite ou abaixo dele.
-    const estoqueBaixo = estoqueExemplo.filter(
-        (produto) => produto.quantidade <= produto.minimo,
-    );
-
-    // Cria um Excel com abas separadas para cada área.
-    const exportarExcel = () => {
-        const resumo = [
-            { Indicador: 'Total de vendas', Valor: totalVendas },
-            { Indicador: 'Quantidade de registros de venda', Valor: vendas.length },
-            { Indicador: 'Ticket médio por registro', Valor: ticketMedio },
-            { Indicador: 'Entradas financeiras', Valor: totalEntradas },
-            { Indicador: 'Despesas registradas', Valor: totalDespesas },
-            { Indicador: 'Resultado financeiro estimado', Valor: resultado },
-            { Indicador: 'Produtos com estoque baixo', Valor: estoqueBaixo.length },
-        ];
-
-        const arquivo = XLSX.utils.book_new();
-
-        // Aba 1: indicadores gerais.
-        XLSX.utils.book_append_sheet(
-            arquivo,
-            XLSX.utils.json_to_sheet(resumo),
-            'Resumo geral',
-        );
-
-        // Aba 2: vendas filtradas.
-        XLSX.utils.book_append_sheet(
-            arquivo,
-            XLSX.utils.json_to_sheet(
-                vendas.map((venda) => ({
-                    Data: dataFormatada(venda.data),
-                    Produto: venda.produto,
-                    Quantidade: venda.quantidade,
-                    Valor: venda.valor,
-                    Pagamento: venda.pagamento,
-                })),
-            ),
-            'Vendas',
-        );
-
-        // Aba 3: situação do estoque.
-        XLSX.utils.book_append_sheet(
-            arquivo,
-            XLSX.utils.json_to_sheet(
-                estoqueExemplo.map((produto) => ({
-                    Produto: produto.nome,
-                    Quantidade: produto.quantidade,
-                    'Estoque mínimo': produto.minimo,
-                    Situação:
-                        produto.quantidade <= produto.minimo
-                            ? 'Estoque baixo'
-                            : 'Normal',
-                })),
-            ),
-            'Estoque',
-        );
-
-        // Aba 4: movimentações financeiras filtradas.
-        XLSX.utils.book_append_sheet(
-            arquivo,
-            XLSX.utils.json_to_sheet(
-                movimentos.map((item) => ({
-                    Data: dataFormatada(item.data),
-                    Descrição: item.descricao,
-                    Tipo: item.tipo,
-                    Categoria: item.categoria,
-                    Valor: item.valor,
-                })),
-            ),
-            'Financeiro',
-        );
-
-        // Baixa o arquivo no computador do usuário.
-        XLSX.writeFile(arquivo, 'relatorio-nodsystems.xlsx');
-    };
+        try {
+            if (tipo === 'pdf') {
+                const { exportarPdf } = await import('../../services/relatorioPdf');
+                await exportarPdf({ ...relatorio, geradoEm: new Date() });
+            } else {
+                const { exportarExcel } = await import('../../services/relatorioExcel');
+                await exportarExcel({ ...relatorio, geradoEm: new Date() });
+            }
+        } catch (erro) {
+            console.error(erro);
+            setErroExportar('Não foi possível gerar o arquivo. Tente novamente.');
+        } finally {
+            setExportando('');
+        }
+    }
 
     return (
         <main className="relatorios-page">
@@ -214,15 +130,32 @@ function Relatorios() {
                     </p>
                 </div>
 
-                <button
-                    type="button"
-                    className="relatorios-exportar"
-                    onClick={exportarExcel}
-                >
-                    <FontAwesomeIcon icon={faFileExcel} />
-                    Exportar para Excel
-                </button>
+                <div className="relatorios-exportar-grupo">
+                    <button
+                        type="button"
+                        className="relatorios-exportar"
+                        onClick={() => exportar('pdf')}
+                        disabled={exportando !== ''}
+                    >
+                        <FontAwesomeIcon icon={faFilePdf} />
+                        {exportando === 'pdf' ? 'Gerando PDF...' : 'Exportar PDF'}
+                    </button>
+
+                    <button
+                        type="button"
+                        className="relatorios-exportar relatorios-exportar--secundario"
+                        onClick={() => exportar('excel')}
+                        disabled={exportando !== ''}
+                    >
+                        <FontAwesomeIcon icon={faFileExcel} />
+                        {exportando === 'excel' ? 'Gerando Excel...' : 'Excel'}
+                    </button>
+                </div>
             </header>
+
+            {erroExportar && (
+                <div className="nod-alerta nod-alerta--erro" role="alert">{erroExportar}</div>
+            )}
 
             {/* Filtros para selecionar o período */}
             <section className="relatorios-filtros">
@@ -353,7 +286,7 @@ function Relatorios() {
 
                     <div className="relatorios-dado-linha">
                         <span>Produtos cadastrados</span>
-                        <strong>{estoqueExemplo.length}</strong>
+                        <strong>{estoqueTodo.length}</strong>
                     </div>
                     <div className="relatorios-dado-linha">
                         <span>Produtos com estoque baixo</span>
@@ -410,7 +343,9 @@ function Relatorios() {
                         <p>Confira os registros incluídos no relatório.</p>
                     </div>
                     <span className="relatorios-contagem">
-                        {vendas.length} registros
+                        {vendas.length > LIMITE_TABELA
+                            ? `${LIMITE_TABELA} mais recentes de ${vendas.length}`
+                            : `${vendas.length} registros`}
                     </span>
                 </div>
 
@@ -427,7 +362,7 @@ function Relatorios() {
                         </thead>
                         <tbody>
                             {vendas.length > 0 ? (
-                                vendas.map((venda, indice) => (
+                                vendasRecentes.map((venda, indice) => (
                                     <tr key={`${venda.data}-${venda.produto}-${indice}`}>
                                         <td>{dataFormatada(venda.data)}</td>
                                         <td>{venda.produto}</td>
@@ -454,6 +389,7 @@ function Relatorios() {
             <p className="relatorios-aviso">
                 <strong>Modo de demonstração:</strong> os valores exibidos são
                 exemplos e ainda não representam os dados reais da empresa.
+                A tabela mostra as vendas mais recentes; o PDF e o Excel levam todas.
             </p>
         </main>
     );
