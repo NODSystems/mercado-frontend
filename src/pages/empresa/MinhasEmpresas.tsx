@@ -1,7 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faTrash } from '@fortawesome/free-solid-svg-icons';
+
 import { useAuth } from '../../contexts/AuthContext';
+import ExcluirEmpresaModal from '../../components/empresa/ExcluirEmpresaModal';
 import {
     api,
     mensagemDeErro,
@@ -14,11 +18,24 @@ const CHAVE_CONVITE = 'nod:convitePendente';
 
 function MinhasEmpresas() {
     const navigate = useNavigate();
-    const { usuario, sair, selecionarEmpresa } = useAuth();
+    const { usuario, sair, selecionarEmpresa, empresaAtual } = useAuth();
 
     const [empresas, setEmpresas] = useState<EmpresaResumo[]>([]);
     const [carregando, setCarregando] = useState(true);
     const [erro, setErro] = useState('');
+    const [aviso, setAviso] = useState('');
+
+    // Empresa aberta no modal de exclusão
+    const [paraExcluir, setParaExcluir] = useState<EmpresaResumo | null>(null);
+
+    function aoExcluir(excluida: EmpresaResumo) {
+        setParaExcluir(null);
+        setEmpresas((lista) => lista.filter((e) => e.id !== excluida.id));
+        setAviso(`${excluida.nome_fantasia || excluida.razao_social} foi excluída.`);
+
+        // Se era a empresa aberta no sistema, deixa de ser
+        if (empresaAtual?.id === excluida.id) selecionarEmpresa(null);
+    }
 
     // Convite aberto antes do login/cadastro (guardado pela página de convite)
     const [convitePendente] = useState(() => {
@@ -83,6 +100,12 @@ function MinhasEmpresas() {
                 </div>
             )}
 
+            {aviso && (
+                <div className="nod-alerta nod-alerta--sucesso" role="status">
+                    {aviso}
+                </div>
+            )}
+
             {erro && (
                 <div className="nod-alerta nod-alerta--erro" role="alert">
                     {erro}
@@ -97,32 +120,46 @@ function MinhasEmpresas() {
                         const suspensa = empresa.status !== 'ATIVA';
 
                         return (
-                            <button
-                                key={empresa.id}
-                                type="button"
-                                className="empresa-card"
-                                onClick={() => abrirEmpresa(empresa)}
-                                disabled={suspensa}
-                                title={suspensa ? 'Empresa suspensa' : 'Abrir empresa'}
-                            >
-                                <h2>{empresa.nome_fantasia || empresa.razao_social}</h2>
+                            <div key={empresa.id} className="empresa-card-wrapper">
+                                <button
+                                    type="button"
+                                    className="empresa-card"
+                                    onClick={() => abrirEmpresa(empresa)}
+                                    disabled={suspensa}
+                                    title={suspensa ? 'Empresa suspensa' : 'Abrir empresa'}
+                                >
+                                    <h2>{empresa.nome_fantasia || empresa.razao_social}</h2>
 
-                                {empresa.nome_fantasia && (
-                                    <small>{empresa.razao_social}</small>
-                                )}
-
-                                <div className="empresa-card-rodape">
-                                    <span className="empresa-etiqueta">
-                                        {nomeDoCargo(empresa)}
-                                    </span>
-
-                                    {suspensa && (
-                                        <span className="empresa-etiqueta empresa-etiqueta--suspensa">
-                                            Suspensa
-                                        </span>
+                                    {empresa.nome_fantasia && (
+                                        <small>{empresa.razao_social}</small>
                                     )}
-                                </div>
-                            </button>
+
+                                    <div className="empresa-card-rodape">
+                                        <span className="empresa-etiqueta">
+                                            {nomeDoCargo(empresa)}
+                                        </span>
+
+                                        {suspensa && (
+                                            <span className="empresa-etiqueta empresa-etiqueta--suspensa">
+                                                Suspensa
+                                            </span>
+                                        )}
+                                    </div>
+                                </button>
+
+                                {/* Só o proprietário pode excluir */}
+                                {empresa.cargo === 'PROPRIETARIO' && (
+                                    <button
+                                        type="button"
+                                        className="empresa-excluir"
+                                        onClick={() => setParaExcluir(empresa)}
+                                        aria-label={`Excluir ${empresa.nome_fantasia || empresa.razao_social}`}
+                                        title="Excluir empresa"
+                                    >
+                                        <FontAwesomeIcon icon={faTrash} />
+                                    </button>
+                                )}
+                            </div>
                         );
                     })}
                 </section>
@@ -145,6 +182,13 @@ function MinhasEmpresas() {
                     </button>
                 </section>
             ) : null}
+            {paraExcluir && (
+                <ExcluirEmpresaModal
+                    empresa={paraExcluir}
+                    onCancelar={() => setParaExcluir(null)}
+                    onExcluida={aoExcluir}
+                />
+            )}
         </main>
     );
 }

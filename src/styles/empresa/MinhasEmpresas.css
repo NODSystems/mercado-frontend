@@ -266,3 +266,38 @@
         align-items: flex-start;
     }
 }
+
+/* Card com botão de excluir no canto (só para o proprietário) */
+.empresa-card-wrapper {
+    position: relative;
+}
+
+.empresa-card-wrapper .empresa-card {
+    width: 100%;
+    height: 100%;
+    padding-right: 56px;
+}
+
+.empresa-excluir {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    background: transparent;
+    color: #94a3b8;
+    cursor: pointer;
+    transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+.empresa-excluir:hover,
+.empresa-excluir:focus-visible {
+    color: #dc2626;
+    background: #fef2f2;
+    border-color: #fecaca;
+}
