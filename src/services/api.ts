@@ -25,7 +25,7 @@ export class ApiError extends Error {
     }
 }
 
-type Metodo = "GET" | "POST" | "PUT" | "DELETE";
+type Metodo = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
 async function requisicao<T>(
     metodo: Metodo,
@@ -73,6 +73,7 @@ export const api = {
     get: <T>(rota: string) => requisicao<T>("GET", rota),
     post: <T>(rota: string, corpo?: unknown) => requisicao<T>("POST", rota, corpo ?? {}),
     put: <T>(rota: string, corpo?: unknown) => requisicao<T>("PUT", rota, corpo ?? {}),
+    patch: <T>(rota: string, corpo?: unknown) => requisicao<T>("PATCH", rota, corpo ?? {}),
     delete: <T>(rota: string) => requisicao<T>("DELETE", rota),
 };
 
@@ -122,15 +123,65 @@ export type Sessao = {
     user_agent: string | null;
 };
 
+export type StatusFuncionario = "CONVIDADO" | "ATIVO" | "INATIVO";
+
 export type Funcionario = {
     id: number;
+    usuario_id: number | null;
     nome: string;
     email: string;
     telefone: string | null;
-    status: "CONVIDADO" | "ATIVO" | "INATIVO";
+    cpf: string | null;
+    salario: string | null;
+    data_admissao: string | null;
+    status: StatusFuncionario;
     cargo_id: number | null;
     cargo: string | null;
+    convite_pendente_id: number | null;
 };
+
+export type TipoPagamento = "SALARIO" | "ADIANTAMENTO" | "BONUS" | "COMISSAO" | "OUTRO";
+
+export type PagamentoFuncionario = {
+    id: number;
+    tipo: TipoPagamento;
+    valor: string;
+    referencia: string | null;
+    data_pagamento: string;
+    metodo_pagamento: string | null;
+    observacao: string | null;
+    registrado_por_nome: string | null;
+};
+
+// Formata número como moeda (R$ 1.234,56)
+export function formatarMoeda(valor: number | string | null | undefined): string {
+    const numero = Number(valor ?? 0);
+    return numero.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+// Formata "2026-11-05" como "05/11/2026" sem mexer no fuso horário
+export function formatarData(data: string | null | undefined): string {
+    if (!data) return "—";
+    const [ano, mes, dia] = data.slice(0, 10).split("-");
+    return `${dia}/${mes}/${ano}`;
+}
+
+// Formata CPF: 52998224725 → 529.982.247-25
+export function formatarCpf(cpf: string | null | undefined): string {
+    if (!cpf) return "";
+    const d = cpf.replace(/\D/g, "");
+    if (d.length !== 11) return cpf;
+    return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
+}
+
+// Formata telefone: 12988887777 → (12) 98888-7777
+export function formatarTelefone(telefone: string | null | undefined): string {
+    if (!telefone) return "";
+    const d = telefone.replace(/\D/g, "");
+    if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+    if (d.length === 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+    return telefone;
+}
 
 export type Cargo = {
     id: number;

@@ -14,10 +14,14 @@ import {
 import { useAuth } from "../../contexts/AuthContext";
 import {
     api,
+    formatarTelefone,
     mensagemDeErro,
     type Cargo,
     type Funcionario,
 } from "../../services/api";
+
+// Painel lateral para gerenciar um funcionário.
+import PainelFuncionario from "../../components/equipe/PainelFuncionario";
 
 // Importa o CSS exclusivo da página.
 import "../../styles/nodSystems/Equipe.css";
@@ -53,6 +57,10 @@ function Equipe() {
     // Controla a pesquisa e o filtro por cargo.
     const [pesquisa, setPesquisa] = useState("");
     const [filtroCargo, setFiltroCargo] = useState("Todos");
+    const [filtroStatus, setFiltroStatus] = useState("Todos");
+
+    // Funcionário aberto no painel de gerenciamento.
+    const [selecionadoId, setSelecionadoId] = useState<number | null>(null);
 
     // Guarda mensagens de sucesso ou validação.
     const [mensagem, setMensagem] = useState("");
@@ -101,7 +109,10 @@ function Equipe() {
         const correspondeCargo =
             filtroCargo === "Todos" || funcionario.cargo === filtroCargo;
 
-        return correspondePesquisa && correspondeCargo;
+        const correspondeStatus =
+            filtroStatus === "Todos" || funcionario.status === filtroStatus;
+
+        return correspondePesquisa && correspondeCargo && correspondeStatus;
     });
 
     // Envia o convite por e-mail. A pessoa entra na equipe quando aceitar.
@@ -316,6 +327,17 @@ function Equipe() {
                                 </option>
                             ))}
                         </select>
+
+                        <select
+                            value={filtroStatus}
+                            onChange={(evento) => setFiltroStatus(evento.target.value)}
+                            aria-label="Filtrar por status"
+                        >
+                            <option value="Todos">Todos os status</option>
+                            <option value="ATIVO">Ativos</option>
+                            <option value="CONVIDADO">Convites enviados</option>
+                            <option value="INATIVO">Inativos</option>
+                        </select>
                     </div>
                 </div>
 
@@ -341,7 +363,7 @@ function Equipe() {
                         <p>
                             {funcionarios.length === 0
                                 ? "Clique em Novo funcionário para enviar um convite."
-                                : "Tente alterar a pesquisa ou o filtro de cargo."}
+                                : "Tente alterar a pesquisa ou os filtros."}
                         </p>
                     </div>
                 ) : (
@@ -354,12 +376,17 @@ function Equipe() {
                                     <th>Contato</th>
                                     <th>Cargo</th>
                                     <th>Status</th>
+                                    <th aria-label="Ações"></th>
                                 </tr>
                             </thead>
 
                             <tbody>
                                 {funcionariosFiltrados.map((funcionario) => (
-                                    <tr key={funcionario.id}>
+                                    <tr
+                                        key={funcionario.id}
+                                        className="equipe-linha-clicavel"
+                                        onClick={() => setSelecionadoId(funcionario.id)}
+                                    >
                                         <td>
                                             <div className="equipe-funcionario">
                                                 <div className="equipe-avatar">
@@ -376,7 +403,7 @@ function Equipe() {
                                             <div className="equipe-contato">
                                                 <span>{funcionario.email}</span>
                                                 <small>
-                                                    {funcionario.telefone || "Sem telefone"}
+                                                    {formatarTelefone(funcionario.telefone) || "Sem telefone"}
                                                 </small>
                                             </div>
                                         </td>
@@ -384,9 +411,22 @@ function Equipe() {
                                         <td>{funcionario.cargo || "—"}</td>
 
                                         <td>
-                                            <span className="equipe-status">
+                                            <span className={`equipe-status equipe-status--${funcionario.status.toLowerCase()}`}>
                                                 {nomesStatus[funcionario.status]}
                                             </span>
+                                        </td>
+
+                                        <td>
+                                            <button
+                                                type="button"
+                                                className="equipe-botao-gerenciar"
+                                                onClick={(evento) => {
+                                                    evento.stopPropagation();
+                                                    setSelecionadoId(funcionario.id);
+                                                }}
+                                            >
+                                                Gerenciar
+                                            </button>
                                         </td>
                                     </tr>
                                 ))}
@@ -395,6 +435,19 @@ function Equipe() {
                     </div>
                 )}
             </section>
+
+            {selecionadoId !== null && empresaId && (
+                <PainelFuncionario
+                    empresaId={empresaId}
+                    funcionarioId={selecionadoId}
+                    cargos={cargos}
+                    onFechar={() => setSelecionadoId(null)}
+                    onAlterado={(texto) => {
+                        if (texto) setMensagem(texto);
+                        carregarFuncionarios();
+                    }}
+                />
+            )}
         </main>
     );
 }
