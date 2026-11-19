@@ -1,7 +1,7 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 
-import { useAuth } from '../../contexts/AuthContext'
+import { CHAVE_SESSAO_EXPIRADA, useAuth } from '../../contexts/AuthContext'
 import { api, ApiError, mensagemDeErro } from '../../services/api'
 
 import nodsystems from '../../assets/nodsystems.png'
@@ -25,6 +25,24 @@ function Login() {
 
   // Resultado do link de verificação de e-mail (?verificado=true/false)
   const verificado = params.get('verificado')
+
+  // Caiu aqui porque a sessão expirou durante o uso?
+  // (lê no início e apaga depois, para o aviso não reaparecer)
+  const [sessaoExpirada] = useState(() => {
+    try {
+      return sessionStorage.getItem(CHAVE_SESSAO_EXPIRADA) === '1'
+    } catch {
+      return false
+    }
+  })
+
+  useEffect(() => {
+    try {
+      sessionStorage.removeItem(CHAVE_SESSAO_EXPIRADA)
+    } catch {
+      // ignora
+    }
+  }, [])
 
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
@@ -98,6 +116,12 @@ function Login() {
           <p>
             Entre na sua conta para continuar.
           </p>
+
+          {sessaoExpirada && !erro && (
+            <div className="nod-alerta nod-alerta--info" role="status">
+              Sua sessão expirou ou foi encerrada. Entre novamente para continuar.
+            </div>
+          )}
 
           {verificado === 'true' && (
             <div className="nod-alerta nod-alerta--sucesso" role="status">

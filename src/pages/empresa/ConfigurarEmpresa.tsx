@@ -1,8 +1,20 @@
 
-import { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import '../../styles/empresa/ConfigurarEmpresa.css';
-import { api, mensagemDeErro } from '../../services/api';
+import { api, ApiError, mensagemDeErro } from '../../services/api';
+import {
+    cepValido,
+    cnpjValido,
+    emailValido,
+    ESTADOS,
+    LIMITES,
+    mascaraCep,
+    mascaraCnpj,
+    mascaraTelefone,
+    somenteDigitos,
+    telefoneValido,
+} from '../../utils/validacao';
 
 type DadosEmpresa = {
     nome: string;
@@ -42,6 +54,76 @@ const nomesTipos: Record<string, string> = {
     outros: 'Outro negócio',
 };
 
+type Erros = Partial<Record<keyof DadosEmpresa, string>>;
+
+// Campos de cada etapa (para saber para qual etapa voltar quando houver erro)
+const camposPorEtapa: Record<number, (keyof DadosEmpresa)[]> = {
+    1: ['nome', 'nomeFantasia', 'cnpj'],
+    2: ['telefone', 'email', 'cep', 'estado', 'endereco', 'numero', 'cidade'],
+};
+
+// Nome do campo no backend → nome do campo nesta tela
+const campoDoBackend: Record<string, keyof DadosEmpresa> = {
+    razao_social: 'nome',
+    nome_fantasia: 'nomeFantasia',
+    cnpj: 'cnpj',
+    telefone: 'telefone',
+    email_comercial: 'email',
+    cep: 'cep',
+    estado: 'estado',
+    cidade: 'cidade',
+    rua: 'endereco',
+    numero: 'numero',
+};
+
+// Mesmas regras do backend: o erro aparece no campo, na hora.
+function validarCampo(campo: keyof DadosEmpresa, valor: string): string {
+    const texto = valor.trim();
+
+    switch (campo) {
+        case 'nome':
+            if (!texto) return 'Informe a razão social ou o nome do responsável.';
+            if (texto.length > LIMITES.razaoSocial) return `Máximo de ${LIMITES.razaoSocial} caracteres.`;
+            return '';
+        case 'nomeFantasia':
+            return texto.length > LIMITES.nomeFantasia ? `Máximo de ${LIMITES.nomeFantasia} caracteres.` : '';
+        case 'cnpj':
+            if (!texto) return '';
+            if (somenteDigitos(texto).length !== 14) return 'O CNPJ deve ter 14 dígitos.';
+            return cnpjValido(texto) ? '' : 'CNPJ inválido. Confira os números.';
+        case 'telefone':
+            if (!texto) return 'Informe o telefone.';
+            return telefoneValido(texto) ? '' : 'Informe DDD + número (10 ou 11 dígitos).';
+        case 'email':
+            if (!texto) return 'Informe o e-mail comercial.';
+            if (texto.length > LIMITES.email) return `Máximo de ${LIMITES.email} caracteres.`;
+            return emailValido(texto) ? '' : 'Informe um e-mail válido.';
+        case 'cep':
+            if (!texto) return 'Informe o CEP.';
+            return cepValido(texto) ? '' : 'O CEP deve ter 8 dígitos.';
+        case 'estado':
+            return ESTADOS.includes(texto) ? '' : 'Selecione o estado.';
+        case 'endereco':
+            if (!texto) return 'Informe a rua ou avenida.';
+            return texto.length > LIMITES.rua ? `Máximo de ${LIMITES.rua} caracteres.` : '';
+        case 'numero':
+            if (!texto) return 'Informe o número (ou "S/N").';
+            return texto.length > LIMITES.numero ? `Máximo de ${LIMITES.numero} caracteres.` : '';
+        case 'cidade':
+            if (!texto) return 'Informe a cidade.';
+            return texto.length > LIMITES.cidade ? `Máximo de ${LIMITES.cidade} caracteres.` : '';
+        default:
+            return '';
+    }
+}
+
+// Máscaras aplicadas enquanto a pessoa digita
+const mascaras: Partial<Record<keyof DadosEmpresa, (v: string) => string>> = {
+    cnpj: mascaraCnpj,
+    telefone: mascaraTelefone,
+    cep: mascaraCep,
+};
+
 function ConfigurarEmpresa() {
     const navigate = useNavigate();
     const location = useLocation();
@@ -51,45 +133,82 @@ function ConfigurarEmpresa() {
 
     const [etapa, setEtapa] = useState(1);
     const [dados, setDados] = useState<DadosEmpresa>(dadosIniciais);
+    const [erros, setErros] = useState<Erros>({});
     const [erro, setErro] = useState('');
     const [concluido, setConcluido] = useState(false);
     const [salvando, setSalvando] = useState(false);
 
+    // Campo com erro que deve receber o cursor depois que a tela atualizar
+    // (inclusive quando o erro manda de volta para outra etapa)
+    const [campoParaFocar, setCampoParaFocar] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!campoParaFocar) return;
+
+        const elemento = document.getElementById(campoParaFocar);
+
+        if (elemento) {
+            elemento.focus();
+            elemento.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        }
+
+        setCampoParaFocar(null);
+    }, [campoParaFocar, etapa]);
+
     function atualizarCampo(campo: keyof DadosEmpresa, valor: string) {
+        const mascara = mascaras[campo];
+        const novoValor = mascara ? mascara(valor) : valor;
+
         setDados((anterior) => ({
             ...anterior,
-            [campo]: valor,
+            [campo]: novoValor,
         }));
+
+        // Se o campo já estava marcado com erro, revalida enquanto digita
+        if (erros[campo]) {
+            setErros((anterior) => ({ ...anterior, [campo]: validarCampo(campo, novoValor) }));
+        }
+
         setErro('');
     }
 
+    // Valida ao sair do campo, para avisar antes de clicar em Continuar
+    function sairDoCampo(campo: keyof DadosEmpresa) {
+        const valor = dados[campo];
+
+        // Campo obrigatório ainda vazio: só avisa no Continuar
+        if (!valor.trim() && campo !== 'estado') return;
+
+        setErros((anterior) => ({ ...anterior, [campo]: validarCampo(campo, valor) }));
+    }
+
+    function validarEtapa(numero: number): boolean {
+        const novosErros: Erros = {};
+
+        for (const campo of camposPorEtapa[numero] ?? []) {
+            const mensagem = validarCampo(campo, dados[campo]);
+            if (mensagem) novosErros[campo] = mensagem;
+        }
+
+        setErros((anterior) => {
+            const atualizados = { ...anterior };
+            for (const campo of camposPorEtapa[numero] ?? []) delete atualizados[campo];
+            return { ...atualizados, ...novosErros };
+        });
+
+        const primeiro = Object.keys(novosErros)[0];
+
+        if (primeiro) {
+            setErro('Corrija os campos destacados para continuar.');
+            setCampoParaFocar(primeiro);
+            return false;
+        }
+
+        return true;
+    }
+
     function continuar() {
-        if (etapa === 1) {
-            if (!dados.nome.trim()) {
-                setErro('Informe a razão social ou o nome do responsável pelo negócio.');
-                return;
-            }
-        }
-
-        if (etapa === 2) {
-            if (
-                !dados.telefone.trim() ||
-                !dados.email.trim() ||
-                !dados.cep.trim() ||
-                !dados.endereco.trim() ||
-                !dados.numero.trim() ||
-                !dados.cidade.trim() ||
-                !dados.estado.trim()
-            ) {
-                setErro('Preencha todos os campos obrigatórios desta etapa.');
-                return;
-            }
-
-            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(dados.email)) {
-                setErro('Informe um e-mail válido.');
-                return;
-            }
-        }
+        if (!validarEtapa(etapa)) return;
 
         setErro('');
         setEtapa((anterior) => Math.min(anterior + 1, 3));
@@ -97,26 +216,59 @@ function ConfigurarEmpresa() {
 
     async function concluirCadastro() {
         setErro('');
+
+        // Confere tudo de novo antes de enviar
+        if (!validarEtapa(1)) {
+            setEtapa(1);
+            return;
+        }
+
+        if (!validarEtapa(2)) {
+            setEtapa(2);
+            return;
+        }
+
         setSalvando(true);
 
         try {
             // Converte os campos da tela para o formato do backend.
             await api.post('/empresas/criar', {
-                razao_social: dados.nome,
-                nome_fantasia: dados.nomeFantasia || null,
-                cnpj: dados.cnpj || null,
+                razao_social: dados.nome.trim(),
+                nome_fantasia: dados.nomeFantasia.trim() || null,
+                cnpj: dados.cnpj.trim() || null,
                 tipo_negocio: nomesTipos[tipoEmpresa] || 'Outro negócio',
                 telefone: dados.telefone,
-                email_comercial: dados.email,
+                email_comercial: dados.email.trim(),
                 cep: dados.cep,
                 estado: dados.estado,
-                cidade: dados.cidade,
-                rua: dados.endereco,
-                numero: dados.numero,
+                cidade: dados.cidade.trim(),
+                rua: dados.endereco.trim(),
+                numero: dados.numero.trim(),
             });
 
             setConcluido(true);
         } catch (e) {
+            // Erros por campo vindos do backend: marca o campo e volta
+            // para a etapa dele
+            if (e instanceof ApiError && e.erros.length > 0) {
+                const doBackend: Erros = {};
+
+                for (const item of e.erros) {
+                    const campo = campoDoBackend[item.campo];
+                    if (campo && !doBackend[campo]) doBackend[campo] = item.mensagem;
+                }
+
+                const campos = Object.keys(doBackend) as (keyof DadosEmpresa)[];
+
+                if (campos.length > 0) {
+                    setErros(doBackend);
+                    setEtapa(camposPorEtapa[1].includes(campos[0]) ? 1 : 2);
+                    setCampoParaFocar(campos[0]);
+                    setErro('Corrija os campos destacados.');
+                    return;
+                }
+            }
+
             setErro(mensagemDeErro(e));
         } finally {
             setSalvando(false);
@@ -132,6 +284,39 @@ function ConfigurarEmpresa() {
                 state: { tipoEmpresa },
             });
         }
+    }
+
+    // Sem isto, ao clicar no botão o campo perde o foco, a mensagem de
+    // erro do campo aparece, o botão "desce" e o clique se perde.
+    // O botão valida tudo de qualquer forma.
+    function manterFoco(evento: { preventDefault: () => void }) {
+        evento.preventDefault();
+    }
+
+    // Propriedades comuns de cada campo (valor, erro, acessibilidade)
+    function campo(nome: keyof DadosEmpresa) {
+        return {
+            id: nome,
+            value: dados[nome],
+            onChange: (e: { target: { value: string } }) => atualizarCampo(nome, e.target.value),
+            onBlur: () => sairDoCampo(nome),
+            'aria-invalid': erros[nome] ? true : undefined,
+            'aria-describedby': erros[nome] ? `${nome}-erro` : undefined,
+            className: erros[nome] ? 'campo-invalido' : undefined,
+        };
+    }
+
+    function erroDoCampo(nome: keyof DadosEmpresa) {
+        return erros[nome] ? (
+            <small id={`${nome}-erro`} className="campo-erro" role="alert">
+                {erros[nome]}
+            </small>
+        ) : null;
+    }
+
+    // Sem o tipo (ex.: recarregou a página), volta para escolher
+    if (!tipoEmpresa && !concluido) {
+        return <Navigate to="/tipo-empresa" replace />;
     }
 
     return (
@@ -220,14 +405,12 @@ function ConfigurarEmpresa() {
                                         Razão social ou nome do responsável *
                                     </label>
                                     <input
-                                        id="nome"
-                                        value={dados.nome}
-                                        onChange={(e) =>
-                                            atualizarCampo('nome', e.target.value)
-                                        }
+                                        {...campo('nome')}
                                         placeholder="Digite o nome completo"
                                         autoComplete="organization"
+                                        maxLength={LIMITES.razaoSocial}
                                     />
+                                    {erroDoCampo('nome')}
                                 </div>
 
                                 <div className="campo-configurar">
@@ -235,16 +418,11 @@ function ConfigurarEmpresa() {
                                         Nome fantasia
                                     </label>
                                     <input
-                                        id="nomeFantasia"
-                                        value={dados.nomeFantasia}
-                                        onChange={(e) =>
-                                            atualizarCampo(
-                                                'nomeFantasia',
-                                                e.target.value,
-                                            )
-                                        }
+                                        {...campo('nomeFantasia')}
                                         placeholder="Como sua empresa é conhecida?"
+                                        maxLength={LIMITES.nomeFantasia}
                                     />
+                                    {erroDoCampo('nomeFantasia')}
                                 </div>
 
                                 <div className="campo-configurar">
@@ -252,14 +430,11 @@ function ConfigurarEmpresa() {
                                         CNPJ <span>(opcional)</span>
                                     </label>
                                     <input
-                                        id="cnpj"
-                                        value={dados.cnpj}
-                                        onChange={(e) =>
-                                            atualizarCampo('cnpj', e.target.value)
-                                        }
+                                        {...campo('cnpj')}
                                         placeholder="00.000.000/0000-00"
                                         inputMode="numeric"
                                     />
+                                    {erroDoCampo('cnpj')}
                                     <small>
                                         Você pode continuar mesmo se seu negócio
                                         ainda não tiver CNPJ.
@@ -288,18 +463,12 @@ function ConfigurarEmpresa() {
                                     <div className="campo-configurar">
                                         <label htmlFor="telefone">Telefone *</label>
                                         <input
-                                            id="telefone"
+                                            {...campo('telefone')}
                                             type="tel"
-                                            value={dados.telefone}
-                                            onChange={(e) =>
-                                                atualizarCampo(
-                                                    'telefone',
-                                                    e.target.value,
-                                                )
-                                            }
                                             placeholder="(12) 99999-9999"
                                             autoComplete="tel"
                                         />
+                                        {erroDoCampo('telefone')}
                                     </div>
 
                                     <div className="campo-configurar">
@@ -307,18 +476,13 @@ function ConfigurarEmpresa() {
                                             E-mail comercial *
                                         </label>
                                         <input
-                                            id="email"
+                                            {...campo('email')}
                                             type="email"
-                                            value={dados.email}
-                                            onChange={(e) =>
-                                                atualizarCampo(
-                                                    'email',
-                                                    e.target.value,
-                                                )
-                                            }
                                             placeholder="contato@empresa.com"
                                             autoComplete="email"
+                                            maxLength={LIMITES.email}
                                         />
+                                        {erroDoCampo('email')}
                                     </div>
                                 </div>
 
@@ -326,80 +490,56 @@ function ConfigurarEmpresa() {
                                     <div className="campo-configurar">
                                         <label htmlFor="cep">CEP *</label>
                                         <input
-                                            id="cep"
-                                            value={dados.cep}
-                                            onChange={(e) =>
-                                                atualizarCampo('cep', e.target.value)
-                                            }
+                                            {...campo('cep')}
                                             placeholder="00000-000"
                                             autoComplete="postal-code"
                                         />
+                                        {erroDoCampo('cep')}
                                     </div>
 
                                     <div className="campo-configurar">
                                         <label htmlFor="estado">Estado (UF) *</label>
-                                        <input
-                                            id="estado"
-                                            value={dados.estado}
-                                            onChange={(e) =>
-                                                atualizarCampo(
-                                                    'estado',
-                                                    e.target.value.toUpperCase().slice(0, 2),
-                                                )
-                                            }
-                                            placeholder="SP"
-                                            maxLength={2}
-                                            autoComplete="address-level1"
-                                        />
+                                        <select {...campo('estado')}>
+                                            <option value="">Selecione</option>
+                                            {ESTADOS.map((uf) => (
+                                                <option key={uf} value={uf}>{uf}</option>
+                                            ))}
+                                        </select>
+                                        {erroDoCampo('estado')}
                                     </div>
                                 </div>
 
                                 <div className="campo-configurar">
                                     <label htmlFor="endereco">Rua ou avenida *</label>
                                     <input
-                                        id="endereco"
-                                        value={dados.endereco}
-                                        onChange={(e) =>
-                                            atualizarCampo(
-                                                'endereco',
-                                                e.target.value,
-                                            )
-                                        }
+                                        {...campo('endereco')}
                                         placeholder="Nome da rua ou avenida"
                                         autoComplete="street-address"
+                                        maxLength={LIMITES.rua}
                                     />
+                                    {erroDoCampo('endereco')}
                                 </div>
 
                                 <div className="configurar-duas-colunas">
                                     <div className="campo-configurar">
                                         <label htmlFor="numero">Número *</label>
                                         <input
-                                            id="numero"
-                                            value={dados.numero}
-                                            onChange={(e) =>
-                                                atualizarCampo(
-                                                    'numero',
-                                                    e.target.value,
-                                                )
-                                            }
+                                            {...campo('numero')}
                                             placeholder="Número"
+                                            maxLength={LIMITES.numero}
                                         />
+                                        {erroDoCampo('numero')}
                                     </div>
 
                                     <div className="campo-configurar">
                                         <label htmlFor="cidade">Cidade *</label>
                                         <input
-                                            id="cidade"
-                                            value={dados.cidade}
-                                            onChange={(e) =>
-                                                atualizarCampo(
-                                                    'cidade',
-                                                    e.target.value,
-                                                )
-                                            }
+                                            {...campo('cidade')}
                                             placeholder="Sua cidade"
                                             autoComplete="address-level2"
+                                            maxLength={LIMITES.cidade}
                                         />
+                                        {erroDoCampo('cidade')}
                                     </div>
                                 </div>
                             </div>
@@ -463,6 +603,7 @@ function ConfigurarEmpresa() {
                                 type="button"
                                 className="configurar-botao secundario"
                                 onClick={voltar}
+                                    onMouseDown={manterFoco}
                             >
                                 Voltar
                             </button>
@@ -472,6 +613,7 @@ function ConfigurarEmpresa() {
                                     type="button"
                                     className="configurar-botao principal"
                                     onClick={continuar}
+                                    onMouseDown={manterFoco}
                                 >
                                     Continuar →
                                 </button>
@@ -480,6 +622,7 @@ function ConfigurarEmpresa() {
                                     type="button"
                                     className="configurar-botao principal"
                                     onClick={concluirCadastro}
+                                    onMouseDown={manterFoco}
                                     disabled={salvando}
                                 >
                                     {salvando ? 'Salvando...' : 'Concluir configuração'}

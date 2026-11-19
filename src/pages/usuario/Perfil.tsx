@@ -12,6 +12,7 @@ import {
 import "../../styles/usuario/perfil.css";
 import { useAuth } from "../../contexts/AuthContext";
 import { api, mensagemDeErro, nomeDoCargo, type Sessao } from "../../services/api";
+import { LIMITES } from "../../utils/validacao";
 
 // Transforma o "user agent" do navegador em algo legível (ex.: "Windows - Chrome")
 function descreverDispositivo(userAgent: string | null): string {
@@ -57,7 +58,13 @@ function Perfil() {
     const [senhaAtual, setSenhaAtual] = useState("");
     const [senha, setSenha] = useState("");
     const [mostrarSenha, setMostrarSenha] = useState(false);
-    const [mensagem, setMensagem] = useState("");
+    // Antes toda mensagem saía em azul, inclusive os erros
+    const [mensagem, setMensagemTexto] = useState("");
+    const [tipoMensagem, setTipoMensagem] = useState<"sucesso" | "erro">("sucesso");
+    const setMensagem = (texto: string, tipo: "sucesso" | "erro" = "erro") => {
+        setMensagemTexto(texto);
+        setTipoMensagem(tipo);
+    };
     const [salvando, setSalvando] = useState(false);
 
     // Últimos logins = sessões registradas no backend
@@ -100,13 +107,28 @@ function Perfil() {
     async function salvar() {
         setMensagem("");
 
-        if (!nome.trim()) {
-            setMensagem("Informe seu nome.");
+        if (nome.trim().length < 3) {
+            setMensagem("O nome deve ter pelo menos 3 caracteres.");
+            return;
+        }
+
+        if (nome.trim().length > LIMITES.nomeUsuario) {
+            setMensagem(`O nome deve ter no máximo ${LIMITES.nomeUsuario} caracteres.`);
             return;
         }
 
         if (senha && !senhaAtual) {
             setMensagem("Para trocar a senha, informe também a senha atual.");
+            return;
+        }
+
+        if (senha && senha.length < LIMITES.senhaMin) {
+            setMensagem(`A nova senha deve ter pelo menos ${LIMITES.senhaMin} caracteres.`);
+            return;
+        }
+
+        if (senha && new TextEncoder().encode(senha).length > LIMITES.senhaMax) {
+            setMensagem(`A nova senha deve ter no máximo ${LIMITES.senhaMax} caracteres.`);
             return;
         }
 
@@ -132,7 +154,7 @@ function Perfil() {
             }
 
             await recarregarUsuario();
-            setMensagem("Perfil atualizado com sucesso!");
+            setMensagem("Perfil atualizado com sucesso!", "sucesso");
         } catch (e) {
             setMensagem(mensagemDeErro(e));
         } finally {
@@ -180,6 +202,7 @@ function Perfil() {
                                 type="text"
                                 value={nome}
                                 onChange={e => setNome(e.target.value)}
+                                maxLength={LIMITES.nomeUsuario}
                             />
                         </div>
 
@@ -275,7 +298,13 @@ function Perfil() {
 
                 {/* Mensagem */}
                 {mensagem && (
-                    <p className="perfil-mensagem">{mensagem}</p>
+                    <p
+                        className={`nod-alerta nod-alerta--${tipoMensagem}`}
+                        role={tipoMensagem === "erro" ? "alert" : "status"}
+                        style={{ marginTop: 15 }}
+                    >
+                        {mensagem}
+                    </p>
                 )}
 
                 {/* Botões */}

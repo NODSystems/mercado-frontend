@@ -27,6 +27,19 @@ export class ApiError extends Error {
 
 type Metodo = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
+// Respostas 401 do authMiddleware que significam "não está mais logado".
+// (401 também é usado para senha atual errada, que NÃO desloga.)
+const MENSAGENS_SESSAO_ENCERRADA = [
+    "Não autenticado",
+    "Sessão não encontrada",
+    "Sessão encerrada",
+    "Sessão expirada",
+    "Usuário não encontrado",
+    "Token inválido ou expirado",
+];
+
+export const EVENTO_SESSAO_ENCERRADA = "nod:sessao-encerrada";
+
 async function requisicao<T>(
     metodo: Metodo,
     rota: string,
@@ -59,6 +72,17 @@ async function requisicao<T>(
     }
 
     if (!resposta.ok) {
+        // Sessão caiu no meio do uso: avisa o AuthContext para mandar
+        // a pessoa ao login em vez de mostrar erros soltos na tela.
+        if (
+            resposta.status === 401 &&
+            rota !== "/auth/me" &&
+            rota !== "/auth/login" &&
+            MENSAGENS_SESSAO_ENCERRADA.includes(dados?.mensagem)
+        ) {
+            window.dispatchEvent(new Event(EVENTO_SESSAO_ENCERRADA));
+        }
+
         throw new ApiError(
             dados?.mensagem || "Ocorreu um erro inesperado.",
             resposta.status,
