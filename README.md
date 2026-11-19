@@ -25,7 +25,7 @@ O endereço da API vem de `VITE_API_URL` (copie `.env.example` para `.env.local`
 | Minhas empresas | Lista as empresas do usuário e escolhe em qual trabalhar |
 | Configurar empresa | Cadastra a empresa |
 | Navbar | Nome, cargo, trocar de empresa e sair |
-| Equipe | Lista funcionários e envia convites por e-mail |
+| Equipe | Lista funcionários (filtros por cargo e status), envia convites e abre o painel **Gerenciar**: editar dados, mudar cargo, inativar/reativar, cancelar convite, remover e registrar pagamentos |
 | Aceitar convite | Página do link do e-mail de convite |
 | Perfil | Edita o nome, troca a senha e mostra os últimos logins |
 
