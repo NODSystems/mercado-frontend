@@ -430,3 +430,36 @@
         margin-bottom: 32px;
     }
 }
+
+/* =================================================
+   Erros por campo
+   ================================================= */
+.campo-configurar select {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 46px;
+    padding: 12px 14px;
+    border: 1px solid var(--cor-borda);
+    border-radius: 8px;
+    outline: none;
+    background: #fff;
+    color: var(--cor-texto);
+    font: inherit;
+    font-size: 14px;
+}
+
+.campo-configurar select:focus {
+    border-color: var(--cor-primaria);
+    box-shadow: 0 0 0 3px rgb(37 99 235 / 10%);
+}
+
+.campo-configurar .campo-invalido,
+.campo-configurar .campo-invalido:focus {
+    border-color: #dc2626;
+    box-shadow: 0 0 0 3px rgb(220 38 38 / 10%);
+}
+
+.campo-configurar small.campo-erro {
+    color: #b91c1c;
+    font-weight: 500;
+}

@@ -27,6 +27,14 @@ import {
 } from "../../services/api";
 
 import "../../styles/components/PainelFuncionario.css";
+import {
+    cpfValido,
+    LIMITES,
+    mascaraCpf,
+    mascaraTelefone,
+    numeroBR,
+    telefoneValido,
+} from "../../utils/validacao";
 
 type Aba = "dados" | "acesso" | "pagamentos";
 
@@ -176,12 +184,27 @@ function PainelFuncionario({ empresaId, funcionarioId, cargos, onFechar, onAlter
     function salvarDados(evento: FormEvent<HTMLFormElement>) {
         evento.preventDefault();
 
+        // Avisos na hora, com as mesmas regras do backend
+        const problemas: string[] = [];
+        if (nome.trim().length < 3) problemas.push("O nome deve ter pelo menos 3 caracteres.");
+        if (telefone.trim() && !telefoneValido(telefone)) problemas.push("Telefone inválido: informe DDD + número.");
+        if (cpf.trim() && !cpfValido(cpf)) problemas.push("CPF inválido. Confira os números.");
+        const salarioNumero = salario.trim() === "" ? null : numeroBR(salario);
+        if (salarioNumero !== null && (!Number.isFinite(salarioNumero) || salarioNumero < 0)) {
+            problemas.push("Salário inválido. Use, por exemplo, 2.500,00.");
+        }
+
+        if (problemas.length > 0) {
+            setMensagem({ tipo: "erro", texto: problemas.join(" ") });
+            return;
+        }
+
         executar(async () => {
             const resposta = await api.put<{ funcionario: Funcionario }>(rotaBase, {
                 nome,
                 telefone,
                 cpf,
-                salario: salario === "" ? null : salario.replace(",", "."),
+                salario: salarioNumero,
                 dataAdmissao: dataAdmissao || null,
             });
             preencher(resposta.funcionario);
@@ -245,10 +268,18 @@ function PainelFuncionario({ empresaId, funcionarioId, cargos, onFechar, onAlter
     function registrarPagamento(evento: FormEvent<HTMLFormElement>) {
         evento.preventDefault();
 
+        // "2.500,50" virava NaN antes; agora entende o formato brasileiro
+        const valorNumero = numeroBR(valor);
+
+        if (!Number.isFinite(valorNumero) || valorNumero <= 0) {
+            setMensagem({ tipo: "erro", texto: "Informe um valor maior que zero. Ex.: 2.500,00" });
+            return;
+        }
+
         executar(async () => {
             await api.post(`${rotaBase}/pagamentos`, {
                 tipo,
-                valor: valor.replace(",", "."),
+                valor: valorNumero,
                 referencia: referencia || null,
                 dataPagamento,
                 metodoPagamento: metodo,
@@ -282,7 +313,7 @@ function PainelFuncionario({ empresaId, funcionarioId, cargos, onFechar, onAlter
                 <form className="painel-form" onSubmit={salvarDados}>
                     <label>
                         Nome completo
-                        <input value={nome} onChange={(e) => setNome(e.target.value)} required minLength={3} disabled={souEu} />
+                        <input value={nome} onChange={(e) => setNome(e.target.value)} maxLength={LIMITES.nomeFuncionario} disabled={souEu} />
                     </label>
 
                     <label>
@@ -293,12 +324,12 @@ function PainelFuncionario({ empresaId, funcionarioId, cargos, onFechar, onAlter
                     <div className="painel-form-grid">
                         <label>
                             Telefone
-                            <input value={telefone} onChange={(e) => setTelefone(e.target.value)} placeholder="(00) 00000-0000" disabled={souEu} />
+                            <input value={telefone} onChange={(e) => setTelefone(mascaraTelefone(e.target.value))} placeholder="(00) 00000-0000" inputMode="tel" disabled={souEu} />
                         </label>
 
                         <label>
                             CPF
-                            <input value={cpf} onChange={(e) => setCpf(e.target.value)} placeholder="000.000.000-00" disabled={souEu} />
+                            <input value={cpf} onChange={(e) => setCpf(mascaraCpf(e.target.value))} placeholder="000.000.000-00" inputMode="numeric" disabled={souEu} />
                         </label>
 
                         <label>

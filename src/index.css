@@ -160,3 +160,20 @@ canvas {
   opacity: 0.7;
   cursor: wait;
 }
+
+/* Erro embaixo do campo (Cadastro, Perfil, Equipe) */
+.nod-campo-erro {
+  display: block;
+  margin-top: 6px;
+  color: #b91c1c;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+input.nod-invalido,
+select.nod-invalido,
+input.nod-invalido:focus,
+select.nod-invalido:focus {
+  border-color: #dc2626 !important;
+  box-shadow: 0 0 0 3px rgb(220 38 38 / 10%) !important;
+}

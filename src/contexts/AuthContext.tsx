@@ -11,9 +11,13 @@ import {
 import {
     api,
     ApiError,
+    EVENTO_SESSAO_ENCERRADA,
     type EmpresaResumo,
     type Usuario,
 } from "../services/api";
+
+// Marca lida pela tela de login para explicar por que a pessoa caiu lá
+export const CHAVE_SESSAO_EXPIRADA = "nod:sessaoExpirada";
 
 const CHAVE_EMPRESA = "nod:empresaAtual";
 
@@ -78,6 +82,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .catch(() => setUsuario(null))
             .finally(() => setCarregando(false));
     }, [recarregarUsuario]);
+
+    // Sessão encerrada durante o uso (expirou, logout em outro aparelho,
+    // troca de senha...): limpa o estado e as rotas protegidas mandam
+    // para o login.
+    useEffect(() => {
+        function aoEncerrar() {
+            try {
+                sessionStorage.setItem(CHAVE_SESSAO_EXPIRADA, "1");
+            } catch {
+                // ignora
+            }
+            setUsuario(null);
+        }
+
+        window.addEventListener(EVENTO_SESSAO_ENCERRADA, aoEncerrar);
+        return () => window.removeEventListener(EVENTO_SESSAO_ENCERRADA, aoEncerrar);
+    }, []);
+
+    // A empresa salva no navegador pode estar desatualizada (cargo mudou,
+    // acesso inativado, empresa removida): confere com o backend.
+    const idUsuario = usuario?.id;
+    const idEmpresa = empresaAtual?.id;
+
+    useEffect(() => {
+        if (!idUsuario || !idEmpresa) return;
+
+        api.get<{ resultado: EmpresaResumo[] }>("/empresas/listar")
+            .then((resposta) => {
+                const atual = resposta.resultado.find((e) => e.id === idEmpresa);
+                selecionarEmpresa(atual && atual.status === "ATIVA" ? atual : null);
+            })
+            .catch(() => {
+                // Sem conexão: mantém a empresa salva
+            });
+    }, [idUsuario, idEmpresa, selecionarEmpresa]);
 
     const entrar = useCallback(async (email: string, senha: string) => {
         await api.post("/auth/login", { email, senha });

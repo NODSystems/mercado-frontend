@@ -20,6 +20,13 @@ import {
     type Funcionario,
 } from "../../services/api";
 
+import {
+    emailValido,
+    LIMITES,
+    mascaraTelefone,
+    telefoneValido,
+} from "../../utils/validacao";
+
 // Painel lateral para gerenciar um funcionário.
 import PainelFuncionario from "../../components/equipe/PainelFuncionario";
 
@@ -119,8 +126,19 @@ function Equipe() {
     async function cadastrarFuncionario(evento: FormEvent<HTMLFormElement>) {
         evento.preventDefault();
 
-        if (!nome.trim() || !email.trim()) {
-            setMensagem("Preencha o nome e o e-mail do funcionário.");
+        // Mesmas regras do backend, avisando antes de enviar
+        if (nome.trim().length < 3) {
+            setMensagem("O nome do funcionário deve ter pelo menos 3 caracteres.");
+            return;
+        }
+
+        if (!emailValido(email)) {
+            setMensagem("Informe um e-mail válido para o convite.");
+            return;
+        }
+
+        if (telefone.trim() && !telefoneValido(telefone)) {
+            setMensagem("Telefone inválido: informe DDD + número (10 ou 11 dígitos), ou deixe em branco.");
             return;
         }
 
@@ -228,6 +246,7 @@ function Equipe() {
                                 type="text"
                                 value={nome}
                                 onChange={(evento) => setNome(evento.target.value)}
+                                maxLength={LIMITES.nomeFuncionario}
                                 placeholder="Digite o nome completo"
                                 required
                             />
@@ -239,6 +258,7 @@ function Equipe() {
                                 type="email"
                                 value={email}
                                 onChange={(evento) => setEmail(evento.target.value)}
+                                maxLength={LIMITES.email}
                                 placeholder="exemplo@email.com"
                                 required
                             />
@@ -249,7 +269,7 @@ function Equipe() {
                             <input
                                 type="tel"
                                 value={telefone}
-                                onChange={(evento) => setTelefone(evento.target.value)}
+                                onChange={(evento) => setTelefone(mascaraTelefone(evento.target.value))}
                                 placeholder="(12) 99999-9999"
                             />
                         </label>

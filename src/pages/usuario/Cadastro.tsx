@@ -1,6 +1,32 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { api, mensagemDeErro } from '../../services/api'
+import { api, ApiError, mensagemDeErro } from '../../services/api'
+import { emailValido, LIMITES } from '../../utils/validacao'
+
+type CampoCadastro = 'nome' | 'email' | 'senha' | 'confirmarSenha'
+
+// Mesmas regras do backend
+function validarCampoCadastro(campo: CampoCadastro, valor: string, senha = ''): string {
+  const texto = valor.trim()
+
+  switch (campo) {
+    case 'nome':
+      if (texto.length < 3) return 'O nome deve ter pelo menos 3 caracteres.'
+      if (texto.length > LIMITES.nomeUsuario) return `Máximo de ${LIMITES.nomeUsuario} caracteres.`
+      return ''
+    case 'email':
+      if (!texto) return 'Informe seu e-mail.'
+      if (texto.length > LIMITES.email) return `Máximo de ${LIMITES.email} caracteres.`
+      return emailValido(texto) ? '' : 'Informe um e-mail válido.'
+    case 'senha':
+      if (valor.length < LIMITES.senhaMin) return `A senha deve ter pelo menos ${LIMITES.senhaMin} caracteres.`
+      if (new TextEncoder().encode(valor).length > LIMITES.senhaMax) return `A senha deve ter no máximo ${LIMITES.senhaMax} caracteres.`
+      return ''
+    case 'confirmarSenha':
+      if (!valor) return 'Confirme sua senha.'
+      return valor === senha ? '' : 'As senhas não conferem.'
+  }
+}
 import nodsystems from '../../assets/nodsystems.png'
 import GrowthBackground from '../../components/GrowthBackground'
 
@@ -25,6 +51,45 @@ function Cadastro() {
   const [confirmarSenha, setConfirmarSenha] = useState('')
   const [erro, setErro] = useState('')
   const [enviando, setEnviando] = useState(false)
+  const [errosCampos, setErrosCampos] = useState<Partial<Record<CampoCadastro, string>>>({})
+
+  function valorDe(campo: CampoCadastro) {
+    return { nome, email, senha, confirmarSenha }[campo]
+  }
+
+  // Valida ao sair do campo (se já tiver algo digitado)
+  function sairDoCampo(campo: CampoCadastro) {
+    const valor = valorDe(campo)
+    if (!valor) return
+    setErrosCampos((a) => ({ ...a, [campo]: validarCampoCadastro(campo, valor, senha) }))
+  }
+
+  // Enquanto o campo está com erro, revalida a cada tecla
+  function aoDigitar(campo: CampoCadastro, valor: string, definir: (v: string) => void) {
+    definir(valor)
+    setErro('')
+    if (errosCampos[campo]) {
+      setErrosCampos((a) => ({
+        ...a,
+        [campo]: validarCampoCadastro(campo, valor, campo === 'confirmarSenha' ? senha : valor),
+      }))
+    }
+  }
+
+  function erroDoCampo(campo: CampoCadastro) {
+    return errosCampos[campo] ? (
+      <small id={`${campo}-erro`} className="nod-campo-erro" role="alert">{errosCampos[campo]}</small>
+    ) : null
+  }
+
+  function atributosErro(campo: CampoCadastro) {
+    return {
+      className: errosCampos[campo] ? 'nod-invalido' : undefined,
+      'aria-invalid': errosCampos[campo] ? true : undefined,
+      'aria-describedby': errosCampos[campo] ? `${campo}-erro` : undefined,
+      onBlur: () => sairDoCampo(campo),
+    }
+  }
 
   // Mensagem do backend depois do cadastro
   const [sucesso, setSucesso] = useState('')
@@ -34,8 +99,14 @@ function Cadastro() {
     event.preventDefault()
     setErro('')
 
-    if (senha !== confirmarSenha) {
-      setErro('As senhas não conferem.')
+    const novos: Partial<Record<CampoCadastro, string>> = {}
+    for (const campo of ['nome', 'email', 'senha', 'confirmarSenha'] as CampoCadastro[]) {
+      const mensagem = validarCampoCadastro(campo, valorDe(campo), senha)
+      if (mensagem) novos[campo] = mensagem
+    }
+    setErrosCampos(novos)
+
+    if (Object.keys(novos).length > 0) {
       return
     }
 
@@ -48,7 +119,18 @@ function Cadastro() {
       )
       setSucesso(resposta.mensagem)
     } catch (e) {
-      setErro(mensagemDeErro(e))
+      // Erros por campo do backend (ex.: e-mail já cadastrado)
+      if (e instanceof ApiError && e.erros.some((x) => ['nome', 'email', 'senha'].includes(x.campo))) {
+        const doBackend: Partial<Record<CampoCadastro, string>> = {}
+        for (const item of e.erros) {
+          if (['nome', 'email', 'senha'].includes(item.campo)) {
+            doBackend[item.campo as CampoCadastro] = item.mensagem
+          }
+        }
+        setErrosCampos(doBackend)
+      } else {
+        setErro(mensagemDeErro(e))
+      }
     } finally {
       setEnviando(false)
     }
@@ -158,10 +240,12 @@ function Cadastro() {
                 type="text"
                 placeholder="Digite seu nome completo"
                 value={nome}
-                onChange={(e) => setNome(e.target.value)}
+                onChange={(e) => aoDigitar('nome', e.target.value, setNome)}
                 autoComplete="name"
-                required
+                maxLength={LIMITES.nomeUsuario}
+                {...atributosErro('nome')}
               />
+              {erroDoCampo('nome')}
             </label>
 
 
@@ -173,10 +257,12 @@ function Cadastro() {
                 type="email"
                 placeholder="Digite seu e-mail"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => aoDigitar('email', e.target.value, setEmail)}
                 autoComplete="email"
-                required
+                maxLength={LIMITES.email}
+                {...atributosErro('email')}
               />
+              {erroDoCampo('email')}
             </label>
 
 
@@ -192,10 +278,10 @@ function Cadastro() {
                   type={showPassword ? 'text' : 'password'}
                   placeholder="Mínimo de 8 caracteres"
                   value={senha}
-                  onChange={(e) => setSenha(e.target.value)}
+                  onChange={(e) => aoDigitar('senha', e.target.value, setSenha)}
                   autoComplete="new-password"
-                  minLength={8}
-                  required
+                  maxLength={LIMITES.senhaMax}
+                  {...atributosErro('senha')}
                 />
 
                 {/* Botão do olho */}
@@ -255,6 +341,7 @@ function Cadastro() {
                 </button>
 
               </div>
+              {erroDoCampo('senha')}
             </label>
 
 
@@ -274,9 +361,10 @@ function Cadastro() {
                   }
                   placeholder="Digite sua senha novamente"
                   value={confirmarSenha}
-                  onChange={(e) => setConfirmarSenha(e.target.value)}
+                  onChange={(e) => aoDigitar('confirmarSenha', e.target.value, setConfirmarSenha)}
                   autoComplete="new-password"
-                  required
+                  maxLength={LIMITES.senhaMax}
+                  {...atributosErro('confirmarSenha')}
                 />
 
                 {/* Botão do olho */}
@@ -338,11 +426,14 @@ function Cadastro() {
                 </button>
 
               </div>
+              {erroDoCampo('confirmarSenha')}
             </label>
 
 
             {/* BOTÃO DE CADASTRO */}
-            <button type="submit" disabled={enviando}>
+            {/* onMouseDown: evita que a mensagem de erro do campo, que
+                aparece ao perder o foco, empurre o botão e engula o clique */}
+            <button type="submit" disabled={enviando} onMouseDown={(e) => e.preventDefault()}>
               {enviando ? 'Criando conta...' : 'Criar minha conta'}
             </button>
 
