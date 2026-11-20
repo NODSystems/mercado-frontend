@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import '../../styles/empresa/ConfigurarEmpresa.css';
 import { api, ApiError, mensagemDeErro } from '../../services/api';
+import { NOMES_TIPOS } from '../../data/tiposEmpresa';
 import {
     cepValido,
     cnpjValido,
@@ -42,17 +43,6 @@ const dadosIniciais: DadosEmpresa = {
     estado: '',
 };
 
-const nomesTipos: Record<string, string> = {
-    mercadinho: 'Mercadinho / Mercado',
-    padaria: 'Padaria',
-    academia: 'Academia',
-    informatica: 'Loja de informática',
-    roupas: 'Loja de roupas',
-    salao: 'Salão / Barbearia',
-    papelaria: 'Papelaria',
-    assistencia: 'Assistência técnica',
-    outros: 'Outro negócio',
-};
 
 type Erros = Partial<Record<keyof DadosEmpresa, string>>;
 
@@ -236,7 +226,7 @@ function ConfigurarEmpresa() {
                 razao_social: dados.nome.trim(),
                 nome_fantasia: dados.nomeFantasia.trim() || null,
                 cnpj: dados.cnpj.trim() || null,
-                tipo_negocio: nomesTipos[tipoEmpresa] || 'Outro negócio',
+                tipo_negocio: NOMES_TIPOS[tipoEmpresa] || 'Outro comércio',
                 telefone: dados.telefone,
                 email_comercial: dados.email.trim(),
                 cep: dados.cep,
@@ -444,7 +434,7 @@ function ConfigurarEmpresa() {
                                 <div className="campo-configurar">
                                     <label>Tipo de negócio</label>
                                     <div className="tipo-empresa-resumo">
-                                        {nomesTipos[tipoEmpresa] || 'Não informado'}
+                                        {NOMES_TIPOS[tipoEmpresa] || 'Não informado'}
                                     </div>
                                 </div>
                             </div>
@@ -568,7 +558,7 @@ function ConfigurarEmpresa() {
                                     </p>
                                     <p>
                                         <strong>Tipo:</strong>{' '}
-                                        {nomesTipos[tipoEmpresa] || 'Não informado'}
+                                        {NOMES_TIPOS[tipoEmpresa] || 'Não informado'}
                                     </p>
                                 </div>
 
