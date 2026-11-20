@@ -57,20 +57,27 @@ function variacao(atual: number, anterior: number): number | null {
 }
 
 function VisaoGeral() {
-    const { usuario, empresaAtual } = useAuth();
+    const { usuario, empresaAtual, pode, permissoes } = useAuth();
+
+    // O que este cargo pode ver/fazer
+    const verTotais = pode("relatorios.visualizar"); // números da empresa
+    const verVendas = pode("vendas.visualizar");
+    const verEstoque = pode("estoque.visualizar");
+    const verEquipe = pode("funcionarios.visualizar");
+    const fazerVenda = pode("vendas.realizar");
     const navigate = useNavigate();
 
     // ---------------- Equipe (dados reais) ----------------
     const [funcionarios, setFuncionarios] = useState<Funcionario[] | null>(null);
 
     useEffect(() => {
-        if (!empresaAtual) return;
+        if (!empresaAtual || !verEquipe) return;
 
         api.get<{ funcionarios: Funcionario[] }>(`/empresas/${empresaAtual.id}/funcionarios`)
             .then((resposta) => setFuncionarios(resposta.funcionarios))
             // Sem permissão para ver a equipe: o card não aparece
             .catch(() => setFuncionarios(null));
-    }, [empresaAtual]);
+    }, [empresaAtual, verEquipe]);
 
     const ativos = funcionarios?.filter((f) => f.status === "ATIVO").length ?? 0;
     const convidados = funcionarios?.filter((f) => f.status === "CONVIDADO") ?? [];
@@ -113,7 +120,7 @@ function VisaoGeral() {
             totalMes: soma(vendasMes),
             semana,
             maiorDia: Math.max(...semana.map((s) => s.total), 1),
-            ultimas: [...vendasHoje].reverse().slice(0, 6),
+            ultimas: [...vendasHoje].sort((a, b) => b.hora.localeCompare(a.hora)).slice(0, 6),
             estoqueBaixo,
         };
     }, []);
@@ -124,7 +131,7 @@ function VisaoGeral() {
     // ---------------- Atenções ----------------
     const atencoes: Atencao[] = [];
 
-    if (indicadores.estoqueBaixo.length > 0) {
+    if (verEstoque && indicadores.estoqueBaixo.length > 0) {
         atencoes.push({
             id: "estoque",
             icone: faBoxesStacked,
@@ -165,11 +172,11 @@ function VisaoGeral() {
     }
 
     const atalhos = [
-        { icone: faCashRegister, titulo: "Nova venda", descricao: "Abrir o PDV", destino: "/pdv", cor: "azul" },
-        { icone: faBoxesStacked, titulo: "Estoque", descricao: "Entradas e saídas", destino: "/estoque", cor: "laranja" },
-        { icone: faUserPlus, titulo: "Convidar", descricao: "Novo funcionário", destino: "/equipe", cor: "verde" },
-        { icone: faFileInvoiceDollar, titulo: "Relatórios", descricao: "PDF e Excel", destino: "/relatorios", cor: "roxo" },
-    ];
+        { icone: faCashRegister, titulo: "Nova venda", descricao: "Abrir o PDV", destino: "/pdv", cor: "azul", permissao: "vendas.realizar" },
+        { icone: faBoxesStacked, titulo: "Estoque", descricao: "Entradas e saídas", destino: "/estoque", cor: "laranja", permissao: "estoque.visualizar" },
+        { icone: faUserPlus, titulo: "Convidar", descricao: "Novo funcionário", destino: "/equipe", cor: "verde", permissao: "funcionarios.convidar" },
+        { icone: faFileInvoiceDollar, titulo: "Relatórios", descricao: "PDF e Excel", destino: "/relatorios", cor: "roxo", permissao: "relatorios.visualizar" },
+    ].filter((a) => pode(a.permissao));
 
     const nomeEmpresa = empresaAtual?.nome_fantasia || empresaAtual?.razao_social || "";
     // "quinta-feira, 19 de novembro" → "Quinta-feira, 19 de novembro"
@@ -180,10 +187,15 @@ function VisaoGeral() {
     });
     const hojeExtenso = dataTexto.charAt(0).toUpperCase() + dataTexto.slice(1);
 
+    // Espera as permissões para não mostrar e esconder blocos na sequência
+    if (permissoes === null) {
+        return <main className="visao-geral" aria-busy="true" />;
+    }
+
     return (
         <main className="visao-geral">
             {/* ===== Banner ===== */}
-            <section className="vg-banner">
+            <section className={`vg-banner ${verTotais ? "" : "vg-banner--compacto"}`}>
                 <div className="vg-banner-conteudo">
                     <div>
                         <span className="vg-banner-data">{hojeExtenso}</span>
@@ -197,18 +209,23 @@ function VisaoGeral() {
                     </div>
 
                     <div className="vg-banner-acoes">
-                        <button type="button" className="vg-botao-claro" onClick={() => navigate("/pdv")}>
-                            <FontAwesomeIcon icon={faCashRegister} /> Nova venda
-                        </button>
-                        <button type="button" className="vg-botao-contorno" onClick={() => navigate("/relatorios")}>
-                            <FontAwesomeIcon icon={faChartLine} /> Relatórios
-                        </button>
+                        {fazerVenda && (
+                            <button type="button" className="vg-botao-claro" onClick={() => navigate("/pdv")}>
+                                <FontAwesomeIcon icon={faCashRegister} /> Nova venda
+                            </button>
+                        )}
+                        {verTotais && (
+                            <button type="button" className="vg-botao-contorno" onClick={() => navigate("/relatorios")}>
+                                <FontAwesomeIcon icon={faChartLine} /> Relatórios
+                            </button>
+                        )}
                     </div>
                 </div>
             </section>
 
-            <div className="vg-conteudo">
-                {/* ===== Indicadores ===== */}
+            <div className={`vg-conteudo ${verTotais ? "" : "vg-conteudo--sem-indicadores"}`}>
+                {/* ===== Indicadores (só para quem vê os números da empresa) ===== */}
+                {verTotais && (
                 <section className="vg-indicadores" aria-label="Indicadores do dia">
                     <article className="vg-kpi">
                         <div className="vg-kpi-topo">
@@ -246,8 +263,9 @@ function VisaoGeral() {
                         <small>desde o dia 1º</small>
                     </article>
                 </section>
+                )}
 
-                {ESTA_EM_DEMONSTRACAO && (
+                {ESTA_EM_DEMONSTRACAO && (verTotais || verVendas || verEstoque) && (
                     <p className="vg-aviso-demo">
                         Vendas e estoque com <strong>dados de exemplo</strong> até o módulo de vendas
                         ficar pronto. Os dados da equipe são reais.
@@ -255,7 +273,8 @@ function VisaoGeral() {
                 )}
 
                 {/* ===== Gráfico + Atenções ===== */}
-                <section className="vg-grade">
+                <section className={`vg-grade ${verTotais ? "" : "vg-grade--uma"}`}>
+                    {verTotais && (
                     <article className="vg-painel vg-painel--largo">
                         <header className="vg-painel-cabecalho">
                             <div>
@@ -282,6 +301,7 @@ function VisaoGeral() {
                             ))}
                         </div>
                     </article>
+                    )}
 
                     <article className="vg-painel">
                         <header className="vg-painel-cabecalho">
@@ -315,7 +335,7 @@ function VisaoGeral() {
                 </section>
 
                 {/* ===== Atalhos + Equipe + Últimas vendas ===== */}
-                <section className="vg-grade">
+                <section className={`vg-grade ${verVendas ? "" : "vg-grade--uma"}`}>
                     <article className="vg-painel">
                         <header className="vg-painel-cabecalho">
                             <div>
@@ -349,13 +369,14 @@ function VisaoGeral() {
                         )}
                     </article>
 
+                    {verVendas && (
                     <article className="vg-painel vg-painel--largo">
                         <header className="vg-painel-cabecalho">
                             <div>
                                 <h2>Últimas vendas</h2>
                                 <p>Hoje</p>
                             </div>
-                            <Link to="/relatorios" className="vg-link">Ver todas</Link>
+                            {verTotais && <Link to="/relatorios" className="vg-link">Ver todas</Link>}
                         </header>
 
                         {indicadores.ultimas.length === 0 ? (
@@ -386,6 +407,7 @@ function VisaoGeral() {
                             </table>
                         )}
                     </article>
+                    )}
                 </section>
             </div>
         </main>

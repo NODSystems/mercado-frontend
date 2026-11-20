@@ -498,6 +498,7 @@
 
 @media (max-width: 640px) {
     .vg-banner { padding: 28px 0 84px; }
+    .vg-banner.vg-banner--compacto { padding-bottom: 28px; }
     .vg-banner-conteudo { padding: 0 18px; }
     .vg-banner-conteudo { flex-direction: column; align-items: flex-start; }
     .vg-conteudo { padding: 0 14px; }
@@ -507,4 +508,25 @@
     .vg-grafico-valor { display: none; }
     .vg-tabela th:nth-child(3),
     .vg-tabela td:nth-child(3) { display: none; }
+}
+
+/* Cargos sem acesso aos números da empresa (ex.: Vendedor) */
+/* Sem os cards sobrepostos ao banner: banner mais baixo e conteúdo
+   começando logo abaixo dele (o aviso não fica em cima do azul) */
+.vg-banner--compacto {
+    padding-bottom: 36px;
+}
+
+.vg-conteudo--sem-indicadores {
+    margin-top: 20px;
+}
+
+.vg-conteudo--sem-indicadores .vg-aviso-demo {
+    margin-top: 0;
+    margin-bottom: 4px;
+}
+
+.vg-grade.vg-grade--uma,
+.vg-grade + .vg-grade.vg-grade--uma {
+    grid-template-columns: minmax(0, 1fr);
 }
