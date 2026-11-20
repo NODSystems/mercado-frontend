@@ -2,18 +2,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../../styles/empresa/TipoEmpresa.css';
+import { TIPOS_EMPRESA } from '../../data/tiposEmpresa';
 
-const tiposEmpresa = [
-    { id: 'mercadinho', nome: 'Mercadinho / Mercado', descricao: 'Produtos, estoque e vendas', icone: '🛒' },
-    { id: 'padaria', nome: 'Padaria', descricao: 'Produtos, encomendas e vendas', icone: '🥖' },
-    { id: 'academia', nome: 'Academia', descricao: 'Alunos, planos e mensalidades', icone: '🏋️' },
-    { id: 'informatica', nome: 'Loja de informática', descricao: 'Equipamentos, peças e serviços', icone: '💻' },
-    { id: 'roupas', nome: 'Loja de roupas', descricao: 'Peças, tamanhos e estoque', icone: '👕' },
-    { id: 'salao', nome: 'Salão / Barbearia', descricao: 'Clientes e serviços', icone: '✂️' },
-    { id: 'papelaria', nome: 'Papelaria', descricao: 'Materiais e controle de produtos', icone: '📚' },
-    { id: 'assistencia', nome: 'Assistência técnica', descricao: 'Serviços e ordens de reparo', icone: '🔧' },
-    { id: 'outros', nome: 'Outro negócio', descricao: 'Outros tipos de empresa', icone: '🏢' },
-];
 
 function TipoEmpresa() {
     const navigate = useNavigate();
@@ -49,7 +39,7 @@ function TipoEmpresa() {
                 </p>
 
                 <div className="tipos-empresa-grid">
-                    {tiposEmpresa.map((tipo) => (
+                    {TIPOS_EMPRESA.map((tipo) => (
                         <button
                             key={tipo.id}
                             type="button"
