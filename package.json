@@ -13,6 +13,8 @@
     "@fortawesome/fontawesome-svg-core": "^7.3.1",
     "@fortawesome/free-solid-svg-icons": "^7.3.1",
     "@fortawesome/react-fontawesome": "^3.5.0",
+    "@zxing/browser": "^0.2.1",
+    "@zxing/library": "^0.23.0",
     "bootstrap": "^5.3.8",
     "exceljs": "^4.4.0",
     "pdfmake": "^0.3.14",
