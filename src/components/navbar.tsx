@@ -10,13 +10,14 @@ import {
 
 import { useAuth } from "../contexts/AuthContext";
 import { nomeDoCargo } from "../services/api";
+import { PERMISSAO_DA_AREA } from "../data/permissoes";
 
 import logo from "../assets/NodLogo(maior).jpeg";
 import "../styles/components/navbar.css";
 
 function Navbar() {
     const [menu, setMenu] = useState(false);
-    const { usuario, empresaAtual, sair: encerrarSessao } = useAuth();
+    const { usuario, empresaAtual, sair: encerrarSessao, pode } = useAuth();
 
     // A foto ainda não é salva no backend: fica neste navegador (tela Perfil).
     const [foto] = useState<string | null>(() => {
@@ -45,14 +46,15 @@ function Navbar() {
         navigate("/login");
     }
 
+    // Só aparecem as abas que o cargo pode abrir
     const abas = [
-        { nome: "Visão Geral", rota: "/" },
-        { nome: "PDV", rota: "/pdv" },
-        { nome: "Estoque", rota: "/estoque" },
-        { nome: "Financeiro", rota: "/financeiro" },
-        { nome: "Equipe", rota: "/equipe" },
-        { nome: "Relatórios", rota: "/relatorios" },
-    ];
+        { nome: "Visão Geral", rota: "/", permissao: null },
+        { nome: "PDV", rota: "/pdv", permissao: PERMISSAO_DA_AREA.pdv },
+        { nome: "Estoque", rota: "/estoque", permissao: PERMISSAO_DA_AREA.estoque },
+        { nome: "Financeiro", rota: "/financeiro", permissao: PERMISSAO_DA_AREA.financeiro },
+        { nome: "Equipe", rota: "/equipe", permissao: PERMISSAO_DA_AREA.equipe },
+        { nome: "Relatórios", rota: "/relatorios", permissao: PERMISSAO_DA_AREA.relatorios },
+    ].filter((aba) => aba.permissao === null || pode(aba.permissao));
 
     return (
         <nav className="navbar">

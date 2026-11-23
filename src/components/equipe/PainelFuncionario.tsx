@@ -69,7 +69,14 @@ function hojeISO(): string {
 }
 
 function PainelFuncionario({ empresaId, funcionarioId, cargos, onFechar, onAlterado }: Props) {
-    const { usuario } = useAuth();
+    const { usuario, pode } = useAuth();
+
+    // O que o cargo de quem está usando permite fazer neste painel
+    const podeEditar = pode("funcionarios.editar");
+    const podeRemover = pode("funcionarios.remover");
+    const podeConvidar = pode("funcionarios.convidar");
+    const podePagar = pode("funcionarios.pagar");
+    const verAbaAcesso = podeEditar || podeRemover || podeConvidar;
     const rotaBase = `/empresas/${empresaId}/funcionarios/${funcionarioId}`;
 
     const [aba, setAba] = useState<Aba>("dados");
@@ -304,6 +311,9 @@ function PainelFuncionario({ empresaId, funcionarioId, cargos, onFechar, onAlter
 
     const souEu = funcionario?.usuario_id != null && funcionario.usuario_id === usuario?.id;
 
+    // Campos de dados ficam só para leitura se não puder editar
+    const somenteLeitura = souEu || !podeEditar;
+
     // ---------------- Renderização ----------------
     function conteudoAba() {
         if (!funcionario) return null;
@@ -313,7 +323,7 @@ function PainelFuncionario({ empresaId, funcionarioId, cargos, onFechar, onAlter
                 <form className="painel-form" onSubmit={salvarDados}>
                     <label>
                         Nome completo
-                        <input value={nome} onChange={(e) => setNome(e.target.value)} maxLength={LIMITES.nomeFuncionario} disabled={souEu} />
+                        <input value={nome} onChange={(e) => setNome(e.target.value)} maxLength={LIMITES.nomeFuncionario} disabled={somenteLeitura} />
                     </label>
 
                     <label>
@@ -324,12 +334,12 @@ function PainelFuncionario({ empresaId, funcionarioId, cargos, onFechar, onAlter
                     <div className="painel-form-grid">
                         <label>
                             Telefone
-                            <input value={telefone} onChange={(e) => setTelefone(mascaraTelefone(e.target.value))} placeholder="(00) 00000-0000" inputMode="tel" disabled={souEu} />
+                            <input value={telefone} onChange={(e) => setTelefone(mascaraTelefone(e.target.value))} placeholder="(00) 00000-0000" inputMode="tel" disabled={somenteLeitura} />
                         </label>
 
                         <label>
                             CPF
-                            <input value={cpf} onChange={(e) => setCpf(mascaraCpf(e.target.value))} placeholder="000.000.000-00" inputMode="numeric" disabled={souEu} />
+                            <input value={cpf} onChange={(e) => setCpf(mascaraCpf(e.target.value))} placeholder="000.000.000-00" inputMode="numeric" disabled={somenteLeitura} />
                         </label>
 
                         <label>
@@ -345,14 +355,18 @@ function PainelFuncionario({ empresaId, funcionarioId, cargos, onFechar, onAlter
 
                         <label>
                             Data de admissão
-                            <input type="date" value={dataAdmissao} onChange={(e) => setDataAdmissao(e.target.value)} disabled={souEu} />
+                            <input type="date" value={dataAdmissao} onChange={(e) => setDataAdmissao(e.target.value)} disabled={somenteLeitura} />
                         </label>
                     </div>
 
-                    {!souEu && (
+                    {!somenteLeitura && (
                         <button type="submit" className="equipe-botao-principal" disabled={salvando}>
                             {salvando ? "Salvando..." : "Salvar dados"}
                         </button>
+                    )}
+
+                    {!souEu && !podeEditar && (
+                        <small className="painel-somente-leitura">Seu cargo pode ver, mas não alterar estes dados.</small>
                     )}
                 </form>
             );
@@ -361,6 +375,7 @@ function PainelFuncionario({ empresaId, funcionarioId, cargos, onFechar, onAlter
         if (aba === "acesso") {
             return (
                 <div className="painel-secoes">
+                    {podeEditar && (
                     <section className="painel-secao">
                         <h3>Cargo</h3>
                         <p>
@@ -400,6 +415,7 @@ function PainelFuncionario({ empresaId, funcionarioId, cargos, onFechar, onAlter
                             <small>Reative o funcionário para mudar o cargo.</small>
                         )}
                     </section>
+                    )}
 
                     <section className="painel-secao">
                         <h3>Acesso à empresa</h3>
@@ -407,13 +423,19 @@ function PainelFuncionario({ empresaId, funcionarioId, cargos, onFechar, onAlter
                         {funcionario.status === "CONVIDADO" && (
                             <>
                                 <p>O convite foi enviado para {funcionario.email} e ainda não foi aceito.</p>
-                                <button type="button" className="painel-botao-perigo" onClick={cancelarConvite} disabled={salvando}>
-                                    Cancelar convite
-                                </button>
+                                {podeConvidar && (
+                                    <button type="button" className="painel-botao-perigo" onClick={cancelarConvite} disabled={salvando}>
+                                        Cancelar convite
+                                    </button>
+                                )}
                             </>
                         )}
 
-                        {funcionario.status === "ATIVO" && (
+                        {funcionario.status !== "CONVIDADO" && !podeRemover && (
+                            <p>Status: {nomesStatus[funcionario.status]}. Só quem pode remover funcionários ativa ou inativa o acesso.</p>
+                        )}
+
+                        {podeRemover && funcionario.status === "ATIVO" && (
                             <>
                                 <p>Inativar tira o acesso sem apagar o histórico. Dá para reativar depois.</p>
                                 <button
@@ -427,7 +449,7 @@ function PainelFuncionario({ empresaId, funcionarioId, cargos, onFechar, onAlter
                             </>
                         )}
 
-                        {funcionario.status === "INATIVO" && (
+                        {podeRemover && funcionario.status === "INATIVO" && (
                             funcionario.usuario_id ? (
                                 <>
                                     <p>Este funcionário está sem acesso à empresa.</p>
@@ -446,7 +468,7 @@ function PainelFuncionario({ empresaId, funcionarioId, cargos, onFechar, onAlter
                         )}
                     </section>
 
-                    {!souEu && (
+                    {!souEu && podeRemover && (
                         <section className="painel-secao painel-secao--perigo">
                             <h3>Remover da empresa</h3>
                             <p>
@@ -618,12 +640,16 @@ function PainelFuncionario({ empresaId, funcionarioId, cargos, onFechar, onAlter
                     <button type="button" role="tab" aria-selected={aba === "dados"} className={aba === "dados" ? "ativa" : ""} onClick={() => trocarAba("dados")}>
                         <FontAwesomeIcon icon={faIdCard} /> Dados
                     </button>
-                    <button type="button" role="tab" aria-selected={aba === "acesso"} className={aba === "acesso" ? "ativa" : ""} onClick={() => trocarAba("acesso")}>
-                        <FontAwesomeIcon icon={faUserShield} /> Cargo e acesso
-                    </button>
-                    <button type="button" role="tab" aria-selected={aba === "pagamentos"} className={aba === "pagamentos" ? "ativa" : ""} onClick={() => trocarAba("pagamentos")}>
-                        <FontAwesomeIcon icon={faMoneyBillWave} /> Pagamentos
-                    </button>
+                    {verAbaAcesso && (
+                        <button type="button" role="tab" aria-selected={aba === "acesso"} className={aba === "acesso" ? "ativa" : ""} onClick={() => trocarAba("acesso")}>
+                            <FontAwesomeIcon icon={faUserShield} /> Cargo e acesso
+                        </button>
+                    )}
+                    {podePagar && (
+                        <button type="button" role="tab" aria-selected={aba === "pagamentos"} className={aba === "pagamentos" ? "ativa" : ""} onClick={() => trocarAba("pagamentos")}>
+                            <FontAwesomeIcon icon={faMoneyBillWave} /> Pagamentos
+                        </button>
+                    )}
                 </nav>
 
                 <div className="painel-corpo">

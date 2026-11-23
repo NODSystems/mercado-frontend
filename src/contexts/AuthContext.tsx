@@ -25,6 +25,9 @@ type AuthContextType = {
     usuario: Usuario | null;
     carregando: boolean;
     empresaAtual: EmpresaResumo | null;
+    // Permissões do usuário na empresa aberta (null = carregando)
+    permissoes: string[] | null;
+    pode: (permissao: string) => boolean;
     entrar: (email: string, senha: string) => Promise<void>;
     sair: () => Promise<void>;
     recarregarUsuario: () => Promise<void>;
@@ -48,6 +51,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [empresaAtual, setEmpresaAtual] = useState<EmpresaResumo | null>(
         lerEmpresaSalva,
     );
+
+    const [permissoes, setPermissoes] = useState<string[] | null>(null);
 
     const selecionarEmpresa = useCallback((empresa: EmpresaResumo | null) => {
         setEmpresaAtual(empresa);
@@ -118,6 +123,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             });
     }, [idUsuario, idEmpresa, selecionarEmpresa]);
 
+    // Permissões do cargo na empresa aberta. O backend continua conferindo
+    // cada rota; isto serve para o front mostrar só o que o cargo pode usar.
+    useEffect(() => {
+        setPermissoes(null);
+
+        if (!idUsuario || !idEmpresa) return;
+
+        let cancelado = false;
+
+        api.get<{ permissoes: string[] }>(`/empresas/${idEmpresa}/permissoes`)
+            .then((resposta) => {
+                if (!cancelado) setPermissoes(resposta.permissoes);
+            })
+            .catch(() => {
+                // Na dúvida, não libera nada
+                if (!cancelado) setPermissoes([]);
+            });
+
+        return () => {
+            cancelado = true;
+        };
+    }, [idUsuario, idEmpresa]);
+
+    const pode = useCallback(
+        (permissao: string) => permissoes?.includes(permissao) ?? false,
+        [permissoes],
+    );
+
     const entrar = useCallback(async (email: string, senha: string) => {
         await api.post("/auth/login", { email, senha });
         selecionarEmpresa(null);
@@ -141,6 +174,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 usuario,
                 carregando,
                 empresaAtual,
+                permissoes,
+                pode,
                 entrar,
                 sair,
                 recarregarUsuario,

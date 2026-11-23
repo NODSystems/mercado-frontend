@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import '../../styles/nodSystems/Estoque.css';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface Produto {
     id: number;
@@ -10,6 +11,7 @@ interface Produto {
 }
 
 function Estoque() {
+    const { pode } = useAuth();
     const [produtos, setProdutos] = useState<Produto[]>([]);
     const [pesquisa, setPesquisa] = useState('');
     const [mostrarFormulario, setMostrarFormulario] = useState(false);
@@ -66,12 +68,15 @@ function Estoque() {
                     <p>Organize seus produtos e acompanhe as quantidades disponíveis.</p>
                 </div>
 
-                <button
-                    className="estoque-botao-principal"
-                    onClick={() => setMostrarFormulario(!mostrarFormulario)}
-                >
-                    + Novo produto
-                </button>
+                {/* Só quem pode cadastrar produtos */}
+                {pode('produtos.cadastrar') && (
+                    <button
+                        className="estoque-botao-principal"
+                        onClick={() => setMostrarFormulario(!mostrarFormulario)}
+                    >
+                        + Novo produto
+                    </button>
+                )}
             </header>
 
             <section className="estoque-resumo">
@@ -212,12 +217,14 @@ function Estoque() {
                                             </span>
                                         </td>
                                         <td>
-                                            <button
-                                                className="estoque-botao-excluir"
-                                                onClick={() => excluirProduto(produto.id)}
-                                            >
-                                                Excluir
-                                            </button>
+                                            {pode('produtos.excluir') && (
+                                                <button
+                                                    className="estoque-botao-excluir"
+                                                    onClick={() => excluirProduto(produto.id)}
+                                                >
+                                                    Excluir
+                                                </button>
+                                            )}
                                         </td>
                                     </tr>
                                 ))}

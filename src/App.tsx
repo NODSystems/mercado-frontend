@@ -25,6 +25,7 @@ import ConfigurarEmpresa from './pages/empresa/ConfigurarEmpresa';
 import Perfil from './pages/usuario/Perfil';
 import AceitarConvite from './pages/usuario/AceitarConvite';
 import RotaProtegida from './components/RotaProtegida';
+import { PERMISSAO_DA_AREA } from './data/permissoes';
 
 import './App.css';
 
@@ -84,7 +85,7 @@ function App() {
             <Route
                 path="/pdv"
                 element={
-                    <RotaProtegida exigeEmpresa>
+                    <RotaProtegida exigeEmpresa permissao={PERMISSAO_DA_AREA.pdv}>
                         <Navbar />
                         <PDV />
                     </RotaProtegida>
@@ -95,7 +96,7 @@ function App() {
             <Route
                 path="/estoque"
                 element={
-                    <RotaProtegida exigeEmpresa>
+                    <RotaProtegida exigeEmpresa permissao={PERMISSAO_DA_AREA.estoque}>
                         <Navbar />
                         <Estoque />
                     </RotaProtegida>
@@ -106,7 +107,7 @@ function App() {
             <Route
                 path="/financeiro"
                 element={
-                    <RotaProtegida exigeEmpresa>
+                    <RotaProtegida exigeEmpresa permissao={PERMISSAO_DA_AREA.financeiro}>
                         <Navbar />
                         <Financeiro />
                     </RotaProtegida>
@@ -117,7 +118,7 @@ function App() {
             <Route
                 path="/equipe"
                 element={
-                    <RotaProtegida exigeEmpresa>
+                    <RotaProtegida exigeEmpresa permissao={PERMISSAO_DA_AREA.equipe}>
                         <Navbar />
                         <Equipe />
                     </RotaProtegida>
@@ -128,7 +129,7 @@ function App() {
             <Route
                 path="/relatorios"
                 element={
-                    <RotaProtegida exigeEmpresa>
+                    <RotaProtegida exigeEmpresa permissao={PERMISSAO_DA_AREA.relatorios}>
                         <Navbar />
                         <Relatorios />
                     </RotaProtegida>

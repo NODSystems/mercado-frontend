@@ -42,7 +42,12 @@ const nomesStatus: Record<Funcionario["status"], string> = {
 
 // Página de gerenciamento da equipe.
 function Equipe() {
-    const { empresaAtual } = useAuth();
+    const { empresaAtual, pode } = useAuth();
+
+    // Ações liberadas para o cargo
+    const podeConvidar = pode("funcionarios.convidar");
+    const podeGerenciar =
+        pode("funcionarios.editar") || pode("funcionarios.remover") || pode("funcionarios.pagar") || podeConvidar;
     const empresaId = empresaAtual?.id;
 
     // Funcionários e cargos vindos do backend.
@@ -184,17 +189,19 @@ function Equipe() {
                     <p>Gerencie os funcionários e os cargos do seu negócio.</p>
                 </div>
 
-                <button
-                    type="button"
-                    className="equipe-botao-principal"
-                    onClick={() => {
-                        setMensagem("");
-                        setMostrarFormulario(!mostrarFormulario);
-                    }}
-                >
-                    <FontAwesomeIcon icon={faUserPlus} />
-                    Novo funcionário
-                </button>
+                {podeConvidar && (
+                    <button
+                        type="button"
+                        className="equipe-botao-principal"
+                        onClick={() => {
+                            setMensagem("");
+                            setMostrarFormulario(!mostrarFormulario);
+                        }}
+                    >
+                        <FontAwesomeIcon icon={faUserPlus} />
+                        Novo funcionário
+                    </button>
+                )}
             </header>
 
             {/* Mostra mensagens após as ações do usuário. */}
@@ -228,6 +235,7 @@ function Equipe() {
             </section>
 
             {/* Formulário que aparece ao clicar em Novo funcionário. */}
+            {/* (o botão só aparece para quem pode convidar) */}
             {mostrarFormulario && (
                 <form
                     className="equipe-formulario"
@@ -382,7 +390,7 @@ function Equipe() {
                         </h3>
                         <p>
                             {funcionarios.length === 0
-                                ? "Clique em Novo funcionário para enviar um convite."
+                                ? (podeConvidar ? "Clique em Novo funcionário para enviar um convite." : "A equipe ainda não tem funcionários.")
                                 : "Tente alterar a pesquisa ou os filtros."}
                         </p>
                     </div>
@@ -445,7 +453,7 @@ function Equipe() {
                                                     setSelecionadoId(funcionario.id);
                                                 }}
                                             >
-                                                Gerenciar
+                                                {podeGerenciar ? "Gerenciar" : "Ver detalhes"}
                                             </button>
                                         </td>
                                     </tr>

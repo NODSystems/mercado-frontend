@@ -177,3 +177,65 @@ select.nod-invalido:focus {
   border-color: #dc2626 !important;
   box-shadow: 0 0 0 3px rgb(220 38 38 / 10%) !important;
 }
+
+/* Página "Você não tem acesso a esta área" */
+.sem-acesso {
+  display: flex;
+  justify-content: center;
+  padding: 80px 16px;
+  min-height: calc(100vh - 70px);
+  background: var(--cor-fundo);
+}
+
+.sem-acesso-cartao {
+  max-width: 440px;
+  height: fit-content;
+  padding: 36px 32px;
+  text-align: center;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+}
+
+.sem-acesso-icone {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  margin-bottom: 16px;
+  border-radius: 14px;
+  background: var(--cor-fundo-destaque);
+  color: var(--cor-primaria);
+  font-size: 20px;
+}
+
+.sem-acesso h1 {
+  margin: 0 0 10px;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--cor-texto);
+}
+
+.sem-acesso p {
+  margin: 0 0 22px;
+  color: var(--cor-texto-secundario);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.sem-acesso-botao {
+  display: inline-block;
+  padding: 11px 18px;
+  border-radius: 9px;
+  background: var(--cor-primaria);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.sem-acesso-botao:hover {
+  color: #fff;
+  background: var(--cor-primaria-hover);
+}
