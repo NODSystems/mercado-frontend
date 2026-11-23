@@ -1,8 +1,8 @@
 // Cálculos do relatório, usados pela tela de Relatórios e pelos
 // arquivos exportados (PDF e Excel). Uma única fonte para os números:
 // o que aparece na tela é exatamente o que vai para o arquivo.
-import type { MovimentoFinanceiro, ProdutoEstoque, Venda } from "../data/demonstracao";
-import { dataISO } from "../data/demonstracao";
+import type { MovimentoFinanceiro, ProdutoEstoque, Venda } from "../data/negocio";
+import { dataISO } from "../data/negocio";
 
 export type DadosRelatorio = {
     empresa: string;
@@ -51,6 +51,9 @@ export function calcularRelatorio(params: {
     const movimentos = params.movimentos.filter((m) => noPeriodo(m.data));
 
     const totalVendas = arredondar(vendas.reduce((t, v) => t + v.valor, 0));
+    // Cada linha é um produto; uma venda pode ter vários
+    const distintas = (lista: Venda[]) => new Set(lista.map((v) => v.vendaId)).size;
+    const qtdVendas = distintas(vendas);
     const entradas = arredondar(movimentos.filter((m) => m.tipo === "Entrada").reduce((t, m) => t + m.valor, 0));
     const despesas = arredondar(movimentos.filter((m) => m.tipo === "Saída").reduce((t, m) => t + m.valor, 0));
 
@@ -67,17 +70,18 @@ export function calcularRelatorio(params: {
         porDia.push({
             data: iso,
             total: arredondar(doDia.reduce((t, v) => t + v.valor, 0)),
-            quantidade: doDia.length,
+            quantidade: distintas(doDia),
         });
         cursor.setDate(cursor.getDate() + 1);
     }
 
-    const formas = new Map<string, { quantidade: number; total: number }>();
+    const formas = new Map<string, { quantidade: number; total: number; ids: Set<number> }>();
     const produtos = new Map<string, { quantidade: number; total: number }>();
 
     for (const v of vendas) {
-        const f = formas.get(v.pagamento) ?? { quantidade: 0, total: 0 };
-        f.quantidade += 1;
+        const f = formas.get(v.pagamento) ?? { quantidade: 0, total: 0, ids: new Set<number>() };
+        f.ids.add(v.vendaId);
+        f.quantidade = f.ids.size;
         f.total += v.valor;
         formas.set(v.pagamento, f);
 
@@ -100,9 +104,9 @@ export function calcularRelatorio(params: {
         estoque: params.estoque,
         totais: {
             vendas: totalVendas,
-            quantidade: vendas.length,
-            itens: vendas.reduce((t, v) => t + v.quantidade, 0),
-            ticket: vendas.length ? arredondar(totalVendas / vendas.length) : 0,
+            quantidade: qtdVendas,
+            itens: Math.round(vendas.reduce((t, v) => t + v.quantidade, 0) * 1000) / 1000,
+            ticket: qtdVendas ? arredondar(totalVendas / qtdVendas) : 0,
             entradas,
             despesas,
             resultado: arredondar(entradas - despesas),

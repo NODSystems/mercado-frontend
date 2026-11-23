@@ -485,7 +485,8 @@
 }
 
 .vg-pagamento--pix { background: #e5f7ed; color: #15803d; }
-.vg-pagamento--cartão { background: #e8efff; color: var(--cor-primaria-hover); }
+.vg-pagamento--débito,
+.vg-pagamento--crédito { background: #e8efff; color: var(--cor-primaria-hover); }
 .vg-pagamento--dinheiro { background: #fff0df; color: #b45309; }
 
 /* ---------- Responsivo ---------- */

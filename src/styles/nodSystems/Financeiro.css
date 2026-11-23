@@ -410,3 +410,47 @@
         min-height: 40px;
     }
 }
+/* ===== Período, origem e erros (financeiro ligado ao backend) ===== */
+.financeiro-periodo {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    color: #475569;
+    font-size: 14px;
+}
+
+.financeiro-periodo label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+}
+
+.financeiro-periodo select,
+.financeiro-periodo input {
+    padding: 9px 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    background: #fff;
+    font: inherit;
+}
+
+.financeiro-origem {
+    display: inline-block;
+    padding: 4px 9px;
+    border-radius: 20px;
+    background: #f1f5f9;
+    color: #475569;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.financeiro-erro {
+    color: #dc2626;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.financeiro-formulario input[aria-invalid="true"] { border-color: #dc2626; }

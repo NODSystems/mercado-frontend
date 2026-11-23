@@ -1,140 +1,183 @@
-// Importa o useState para controlar os lançamentos financeiros.
-import { useState, type FormEvent } from "react";
+// Financeiro: entradas, saídas e saldo do período.
+// Vendas do PDV e pagamentos da equipe entram sozinhos; aluguel,
+// energia, compras etc. são lançados aqui e ficam salvos no banco.
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 
-// Importa o CSS exclusivo do módulo financeiro.
 import "../../styles/nodSystems/Financeiro.css";
+import { useAuth } from "../../contexts/AuthContext";
+import { ApiError, mensagemDeErro } from "../../services/api";
+import {
+    carregarFinanceiro,
+    dataISO,
+    financeiroApi,
+    moeda,
+    type MovimentoFinanceiro,
+} from "../../data/negocio";
+import { numeroBR } from "../../utils/validacao";
 
-// Define a estrutura de cada lançamento financeiro.
-interface Lancamento {
-    id: number;
-    descricao: string;
-    categoria: string;
-    tipo: "Entrada" | "Saída";
-    valor: number;
-    data: string;
+type Periodo = "mes" | "mesPassado" | "30dias" | "personalizado";
+
+const CATEGORIAS = {
+    Entrada: ["Outras receitas", "Aporte", "Serviços"],
+    Saída: ["Compra de mercadorias", "Aluguel", "Energia e água", "Internet e telefone", "Impostos", "Manutenção", "Outras despesas"],
+};
+
+const ORIGEM: Record<MovimentoFinanceiro["origem"], string> = {
+    VENDAS: "PDV",
+    EQUIPE: "Equipe",
+    MANUAL: "Manual",
+};
+
+function intervaloDo(periodo: Periodo, inicioPersonalizado: string, fimPersonalizado: string) {
+    const hoje = new Date();
+    if (periodo === "mesPassado") {
+        return { inicio: new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1), fim: new Date(hoje.getFullYear(), hoje.getMonth(), 0) };
+    }
+    if (periodo === "30dias") {
+        const inicio = new Date(hoje);
+        inicio.setDate(hoje.getDate() - 29);
+        return { inicio, fim: hoje };
+    }
+    if (periodo === "personalizado") {
+        return { inicio: new Date(`${inicioPersonalizado}T12:00:00`), fim: new Date(`${fimPersonalizado}T12:00:00`) };
+    }
+    return { inicio: new Date(hoje.getFullYear(), hoje.getMonth(), 1), fim: hoje };
 }
 
 function Financeiro() {
-    // Guarda todos os lançamentos cadastrados nesta sessão.
-    const [lancamentos, setLancamentos] = useState<Lancamento[]>([]);
+    const { empresaAtual } = useAuth();
+    const empresaId = empresaAtual?.id ?? 0;
 
-    // Controla a exibição do formulário de novo lançamento.
+    const [periodo, setPeriodo] = useState<Periodo>("mes");
+    const [inicioPers, setInicioPers] = useState(`${dataISO(new Date()).slice(0, 8)}01`);
+    const [fimPers, setFimPers] = useState(dataISO(new Date()));
+
+    const [movimentos, setMovimentos] = useState<MovimentoFinanceiro[]>([]);
+    const [carregando, setCarregando] = useState(true);
+    const [erroCarga, setErroCarga] = useState("");
+
     const [mostrarFormulario, setMostrarFormulario] = useState(false);
-
-    // Guarda os valores preenchidos no formulário.
     const [descricao, setDescricao] = useState("");
-    const [categoria, setCategoria] = useState("Vendas");
-    const [tipo, setTipo] = useState<"Entrada" | "Saída">("Entrada");
+    const [tipo, setTipo] = useState<"Entrada" | "Saída">("Saída");
+    const [categoria, setCategoria] = useState(CATEGORIAS.Saída[0]);
     const [valor, setValor] = useState("");
-    const [data, setData] = useState(
-        new Date().toLocaleDateString("en-CA")
-    );
+    const [data, setData] = useState(dataISO(new Date()));
+    const [salvando, setSalvando] = useState(false);
+    const [errosCampo, setErrosCampo] = useState<Record<string, string>>({});
 
-    // Guarda os filtros utilizados na listagem.
     const [pesquisa, setPesquisa] = useState("");
     const [filtroTipo, setFiltroTipo] = useState("Todos");
     const [mensagem, setMensagem] = useState("");
 
-    // Formata valores para a moeda brasileira.
-    function formatarMoeda(valor: number) {
-        return valor.toLocaleString("pt-BR", {
-            style: "currency",
-            currency: "BRL",
-        });
-    }
+    const intervalo = useMemo(() => intervaloDo(periodo, inicioPers, fimPers), [periodo, inicioPers, fimPers]);
 
-    // Soma todas as entradas financeiras.
-    const totalEntradas = lancamentos
-        .filter((item) => item.tipo === "Entrada")
-        .reduce((total, item) => total + item.valor, 0);
-
-    // Soma todas as saídas financeiras.
-    const totalSaidas = lancamentos
-        .filter((item) => item.tipo === "Saída")
-        .reduce((total, item) => total + item.valor, 0);
-
-    // Calcula o saldo com base nas entradas e saídas.
-    const saldo = totalEntradas - totalSaidas;
-
-    // Aplica os filtros de pesquisa e tipo aos lançamentos.
-    const lancamentosFiltrados = lancamentos.filter((item) => {
-        const correspondePesquisa =
-            item.descricao.toLowerCase().includes(pesquisa.toLowerCase()) ||
-            item.categoria.toLowerCase().includes(pesquisa.toLowerCase());
-
-        const correspondeTipo =
-            filtroTipo === "Todos" || item.tipo === filtroTipo;
-
-        return correspondePesquisa && correspondeTipo;
-    });
-
-    // Cadastra um novo lançamento financeiro.
-    function cadastrarLancamento(evento: FormEvent<HTMLFormElement>) {
-        evento.preventDefault();
-
-        // Converte o valor digitado para número.
-        const valorNumerico = Number(valor.replace(",", "."));
-
-        // Impede valores inválidos ou iguais a zero.
-        if (!Number.isFinite(valorNumerico) || valorNumerico <= 0) {
-            setMensagem("Informe um valor maior que zero.");
+    const carregar = useCallback(async () => {
+        if (!empresaId) return;
+        if (intervalo.fim < intervalo.inicio) {
+            setErroCarga("A data final deve ser depois da inicial.");
+            setCarregando(false);
             return;
         }
+        setCarregando(true);
+        setErroCarga("");
+        try {
+            setMovimentos(await carregarFinanceiro(empresaId, intervalo.inicio, intervalo.fim));
+        } catch (e) {
+            setErroCarga(mensagemDeErro(e));
+        } finally {
+            setCarregando(false);
+        }
+    }, [empresaId, intervalo]);
 
-        // Monta o novo lançamento com os dados do formulário.
-        const novoLancamento: Lancamento = {
-            id: Date.now(),
-            descricao: descricao.trim(),
-            categoria,
-            tipo,
-            valor: valorNumerico,
-            data,
-        };
+    useEffect(() => { carregar(); }, [carregar]);
 
-        // Adiciona o lançamento à lista existente.
-        setLancamentos((atuais) => [novoLancamento, ...atuais]);
+    useEffect(() => {
+        if (!mensagem) return;
+        const t = setTimeout(() => setMensagem(""), 5000);
+        return () => clearTimeout(t);
+    }, [mensagem]);
 
-        // Limpa os campos depois do cadastro.
-        setDescricao("");
-        setCategoria("Vendas");
-        setTipo("Entrada");
-        setValor("");
-        setData(new Date().toLocaleDateString("en-CA"));
-        setMostrarFormulario(false);
-        setMensagem("");
+    const totalEntradas = movimentos.filter((m) => m.tipo === "Entrada").reduce((t, m) => t + m.valor, 0);
+    const totalSaidas = movimentos.filter((m) => m.tipo === "Saída").reduce((t, m) => t + m.valor, 0);
+    const saldo = totalEntradas - totalSaidas;
+    const vendasPeriodo = movimentos.filter((m) => m.origem === "VENDAS").reduce((t, m) => t + m.valor, 0);
+
+    const filtrados = movimentos.filter((m) => {
+        const termo = pesquisa.trim().toLowerCase();
+        const texto = !termo || m.descricao.toLowerCase().includes(termo) || m.categoria.toLowerCase().includes(termo);
+        return texto && (filtroTipo === "Todos" || m.tipo === filtroTipo);
+    });
+
+    function trocarTipo(novo: "Entrada" | "Saída") {
+        setTipo(novo);
+        setCategoria(CATEGORIAS[novo][0]);
     }
 
-    // Exclui um lançamento pelo identificador.
-    function excluirLancamento(id: number) {
-        setLancamentos((atuais) =>
-            atuais.filter((item) => item.id !== id)
-        );
+    async function cadastrarLancamento(evento: FormEvent<HTMLFormElement>) {
+        evento.preventDefault();
+        const erros: Record<string, string> = {};
+        const valorNumerico = numeroBR(valor);
+
+        if (descricao.trim().length < 2) erros.descricao = "Informe a descrição.";
+        if (!Number.isFinite(valorNumerico) || valorNumerico <= 0) erros.valor = "Informe um valor maior que zero.";
+        if (!data) erros.data = "Informe a data.";
+        setErrosCampo(erros);
+        if (Object.keys(erros).length > 0) return;
+
+        setSalvando(true);
+        try {
+            await financeiroApi.lancar(empresaId, {
+                tipo: tipo === "Entrada" ? "ENTRADA" : "SAIDA",
+                categoria,
+                descricao: descricao.trim(),
+                valor: Math.round(valorNumerico * 100) / 100,
+                data,
+            });
+            setDescricao("");
+            setValor("");
+            setMostrarFormulario(false);
+            setMensagem("Lançamento salvo.");
+            carregar();
+        } catch (e) {
+            if (e instanceof ApiError && e.erros.length) {
+                setErrosCampo(Object.fromEntries(e.erros.map((x) => [x.campo, x.mensagem])));
+            } else {
+                setMensagem(mensagemDeErro(e));
+            }
+        } finally {
+            setSalvando(false);
+        }
     }
 
-    // Exibe a data em formato brasileiro na tabela.
-    function formatarData(dataLancamento: string) {
-        const [ano, mes, dia] = dataLancamento.split("-");
-        return `${dia}/${mes}/${ano}`;
+    async function excluirLancamento(item: MovimentoFinanceiro) {
+        if (!item.lancamentoId) return;
+        if (!window.confirm(`Excluir o lançamento “${item.descricao}”?`)) return;
+        try {
+            await financeiroApi.apagar(empresaId, item.lancamentoId);
+            setMensagem("Lançamento excluído.");
+            carregar();
+        } catch (e) {
+            setMensagem(mensagemDeErro(e));
+        }
     }
+
+    const formatarData = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}`;
 
     return (
         <main className="financeiro-page">
-            {/* Cabeçalho do módulo financeiro. */}
             <header className="financeiro-header">
                 <div>
-                    <span className="financeiro-subtitulo">
-                        GESTÃO DO NEGÓCIO
-                    </span>
+                    <span className="financeiro-subtitulo">GESTÃO DO NEGÓCIO</span>
                     <h1>Financeiro</h1>
-                    <p>Acompanhe as entradas, saídas e o saldo do negócio.</p>
+                    <p>Vendas do PDV e pagamentos da equipe entram sozinhos. Lance aqui as outras contas.</p>
                 </div>
 
-                {/* Abre o formulário para cadastrar um lançamento. */}
                 <button
                     type="button"
                     className="financeiro-botao-principal"
                     onClick={() => {
                         setMensagem("");
+                        setErrosCampo({});
                         setMostrarFormulario(!mostrarFormulario);
                     }}
                 >
@@ -142,164 +185,125 @@ function Financeiro() {
                 </button>
             </header>
 
-            {/* Mostra mensagens de validação do formulário. */}
-            {mensagem && (
-                <div className="financeiro-mensagem" role="status">
-                    {mensagem}
-                </div>
-            )}
+            {mensagem && <div className="financeiro-mensagem" role="status">{mensagem}</div>}
 
-            {/* Cards com os principais indicadores financeiros. */}
+            <section className="financeiro-periodo">
+                <label>
+                    Período
+                    <select value={periodo} onChange={(e) => setPeriodo(e.target.value as Periodo)} aria-label="Período">
+                        <option value="mes">Este mês</option>
+                        <option value="mesPassado">Mês passado</option>
+                        <option value="30dias">Últimos 30 dias</option>
+                        <option value="personalizado">Personalizado</option>
+                    </select>
+                </label>
+                {periodo === "personalizado" && (
+                    <>
+                        <input type="date" value={inicioPers} onChange={(e) => setInicioPers(e.target.value)} aria-label="Data inicial" />
+                        <span>até</span>
+                        <input type="date" value={fimPers} min={inicioPers} onChange={(e) => setFimPers(e.target.value)} aria-label="Data final" />
+                    </>
+                )}
+            </section>
+
             <section className="financeiro-resumo">
                 <article className="financeiro-card">
-                    <span>Saldo atual</span>
-                    <strong>{formatarMoeda(saldo)}</strong>
+                    <span>Saldo do período</span>
+                    <strong className={saldo < 0 ? "financeiro-valor-saida" : ""}>{moeda(saldo)}</strong>
                     <small>Entradas menos saídas</small>
                 </article>
 
                 <article className="financeiro-card financeiro-card--entrada">
                     <span>Total de entradas</span>
-                    <strong>{formatarMoeda(totalEntradas)}</strong>
-                    <small>Receitas registradas</small>
+                    <strong>{moeda(totalEntradas)}</strong>
+                    <small>{moeda(vendasPeriodo)} em vendas do PDV</small>
                 </article>
 
                 <article className="financeiro-card financeiro-card--saida">
                     <span>Total de saídas</span>
-                    <strong>{formatarMoeda(totalSaidas)}</strong>
-                    <small>Despesas registradas</small>
+                    <strong>{moeda(totalSaidas)}</strong>
+                    <small>Equipe e contas lançadas</small>
                 </article>
             </section>
 
-            {/* Formulário para adicionar receitas ou despesas. */}
             {mostrarFormulario && (
-                <form
-                    className="financeiro-formulario"
-                    onSubmit={cadastrarLancamento}
-                >
+                <form className="financeiro-formulario" onSubmit={cadastrarLancamento} noValidate>
                     <h2>Novo lançamento</h2>
 
                     <div className="financeiro-formulario-grid">
                         <label>
-                            Descrição
-                            <input
-                                type="text"
-                                value={descricao}
-                                onChange={(evento) =>
-                                    setDescricao(evento.target.value)
-                                }
-                                placeholder="Ex.: Compra de mercadorias"
-                                required
-                            />
-                        </label>
-
-                        <label>
                             Tipo de lançamento
-                            <select
-                                value={tipo}
-                                onChange={(evento) =>
-                                    setTipo(evento.target.value as "Entrada" | "Saída")
-                                }
-                            >
-                                <option value="Entrada">Entrada</option>
-                                <option value="Saída">Saída</option>
+                            <select value={tipo} onChange={(e) => trocarTipo(e.target.value as "Entrada" | "Saída")}>
+                                <option value="Saída">Saída (despesa)</option>
+                                <option value="Entrada">Entrada (receita)</option>
                             </select>
                         </label>
 
                         <label>
                             Categoria
-                            <select
-                                value={categoria}
-                                onChange={(evento) =>
-                                    setCategoria(evento.target.value)
-                                }
-                            >
-                                <option value="Vendas">Vendas</option>
-                                <option value="Compras">Compras</option>
-                                <option value="Contas">Contas</option>
-                                <option value="Salários">Salários</option>
-                                <option value="Serviços">Serviços</option>
-                                <option value="Outros">Outros</option>
+                            <select value={categoria} onChange={(e) => setCategoria(e.target.value)}>
+                                {CATEGORIAS[tipo].map((c) => <option key={c} value={c}>{c}</option>)}
                             </select>
+                        </label>
+
+                        <label>
+                            Descrição
+                            <input
+                                type="text"
+                                value={descricao}
+                                onChange={(e) => setDescricao(e.target.value.slice(0, 150))}
+                                placeholder={tipo === "Saída" ? "Ex.: Aluguel de novembro" : "Ex.: Serviço de entrega"}
+                                aria-invalid={Boolean(errosCampo.descricao)}
+                            />
+                            {errosCampo.descricao && <small className="financeiro-erro">{errosCampo.descricao}</small>}
                         </label>
 
                         <label>
                             Valor (R$)
                             <input
-                                type="number"
-                                min="0.01"
-                                step="0.01"
+                                inputMode="decimal"
                                 value={valor}
-                                onChange={(evento) =>
-                                    setValor(evento.target.value)
-                                }
+                                onChange={(e) => setValor(e.target.value)}
                                 placeholder="0,00"
-                                required
+                                aria-invalid={Boolean(errosCampo.valor)}
                             />
+                            {errosCampo.valor && <small className="financeiro-erro">{errosCampo.valor}</small>}
                         </label>
 
                         <label>
-                            Data do lançamento
-                            <input
-                                type="date"
-                                value={data}
-                                onChange={(evento) =>
-                                    setData(evento.target.value)
-                                }
-                                required
-                            />
+                            Data
+                            <input type="date" value={data} onChange={(e) => setData(e.target.value)} aria-invalid={Boolean(errosCampo.data)} />
+                            {errosCampo.data && <small className="financeiro-erro">{errosCampo.data}</small>}
                         </label>
                     </div>
 
-                    {/* Botões para confirmar ou cancelar o cadastro. */}
                     <div className="financeiro-formulario-acoes">
-                        <button
-                            type="button"
-                            className="financeiro-botao-secundario"
-                            onClick={() => {
-                                setMostrarFormulario(false);
-                                setMensagem("");
-                            }}
-                        >
+                        <button type="button" className="financeiro-botao-secundario" onClick={() => setMostrarFormulario(false)}>
                             Cancelar
                         </button>
-
-                        <button
-                            type="submit"
-                            className="financeiro-botao-principal"
-                        >
-                            Salvar lançamento
+                        <button type="submit" className="financeiro-botao-principal" disabled={salvando}>
+                            {salvando ? "Salvando..." : "Salvar lançamento"}
                         </button>
                     </div>
                 </form>
             )}
 
-            {/* Área de consulta dos lançamentos cadastrados. */}
             <section className="financeiro-lista">
                 <div className="financeiro-lista-header">
                     <div>
-                        <h2>Lançamentos</h2>
-                        <p>Consulte as movimentações financeiras.</p>
+                        <h2>Movimentações</h2>
+                        <p>Tudo que entrou e saiu no período.</p>
                     </div>
 
-                    {/* Pesquisa e filtro da tabela. */}
                     <div className="financeiro-filtros">
                         <input
                             type="search"
                             value={pesquisa}
-                            onChange={(evento) =>
-                                setPesquisa(evento.target.value)
-                            }
-                            placeholder="Pesquisar lançamento..."
-                            aria-label="Pesquisar lançamentos"
+                            onChange={(e) => setPesquisa(e.target.value)}
+                            placeholder="Pesquisar..."
+                            aria-label="Pesquisar movimentações"
                         />
-
-                        <select
-                            value={filtroTipo}
-                            onChange={(evento) =>
-                                setFiltroTipo(evento.target.value)
-                            }
-                            aria-label="Filtrar por tipo"
-                        >
+                        <select value={filtroTipo} onChange={(e) => setFiltroTipo(e.target.value)} aria-label="Filtrar por tipo">
                             <option value="Todos">Todos os tipos</option>
                             <option value="Entrada">Entradas</option>
                             <option value="Saída">Saídas</option>
@@ -307,22 +311,23 @@ function Financeiro() {
                     </div>
                 </div>
 
-                {/* Exibe uma mensagem quando não existem resultados. */}
-                {lancamentosFiltrados.length === 0 ? (
+                {carregando ? (
+                    <div className="financeiro-vazio"><p>Carregando...</p></div>
+                ) : erroCarga ? (
                     <div className="financeiro-vazio">
-                        <h3>
-                            {pesquisa || filtroTipo !== "Todos"
-                                ? "Nenhum lançamento encontrado"
-                                : "Nenhum lançamento cadastrado"}
-                        </h3>
+                        <h3>Não foi possível carregar</h3>
+                        <p>{erroCarga}</p>
+                    </div>
+                ) : filtrados.length === 0 ? (
+                    <div className="financeiro-vazio">
+                        <h3>{pesquisa || filtroTipo !== "Todos" ? "Nada encontrado" : "Nenhuma movimentação no período"}</h3>
                         <p>
                             {pesquisa || filtroTipo !== "Todos"
-                                ? "Tente alterar os filtros da pesquisa."
-                                : "Cadastre uma entrada ou saída para começar."}
+                                ? "Tente alterar os filtros."
+                                : "As vendas do PDV aparecem aqui sozinhas. Lance aluguel, contas e compras em “Novo lançamento”."}
                         </p>
                     </div>
                 ) : (
-                    /* Tabela com os dados dos lançamentos. */
                     <div className="financeiro-tabela-container">
                         <table className="financeiro-tabela">
                             <thead>
@@ -330,50 +335,28 @@ function Financeiro() {
                                     <th>Data</th>
                                     <th>Descrição</th>
                                     <th>Categoria</th>
-                                    <th>Tipo</th>
+                                    <th>Origem</th>
                                     <th>Valor</th>
-                                    <th>Ações</th>
+                                    <th aria-label="Ações" />
                                 </tr>
                             </thead>
-
                             <tbody>
-                                {lancamentosFiltrados.map((item) => (
+                                {filtrados.map((item) => (
                                     <tr key={item.id}>
                                         <td>{formatarData(item.data)}</td>
                                         <td>{item.descricao}</td>
                                         <td>{item.categoria}</td>
-                                        <td>
-                                            <span
-                                                className={
-                                                    item.tipo === "Entrada"
-                                                        ? "financeiro-status financeiro-status--entrada"
-                                                        : "financeiro-status financeiro-status--saida"
-                                                }
-                                            >
-                                                {item.tipo}
-                                            </span>
-                                        </td>
-                                        <td
-                                            className={
-                                                item.tipo === "Entrada"
-                                                    ? "financeiro-valor-entrada"
-                                                    : "financeiro-valor-saida"
-                                            }
-                                        >
+                                        <td><span className="financeiro-origem">{ORIGEM[item.origem]}</span></td>
+                                        <td className={item.tipo === "Entrada" ? "financeiro-valor-entrada" : "financeiro-valor-saida"}>
                                             {item.tipo === "Saída" ? "− " : "+ "}
-                                            {formatarMoeda(item.valor)}
+                                            {moeda(item.valor)}
                                         </td>
                                         <td>
-                                            {/* Remove o lançamento selecionado. */}
-                                            <button
-                                                type="button"
-                                                className="financeiro-botao-excluir"
-                                                onClick={() =>
-                                                    excluirLancamento(item.id)
-                                                }
-                                            >
-                                                Excluir
-                                            </button>
+                                            {item.origem === "MANUAL" && (
+                                                <button type="button" className="financeiro-botao-excluir" onClick={() => excluirLancamento(item)}>
+                                                    Excluir
+                                                </button>
+                                            )}
                                         </td>
                                     </tr>
                                 ))}

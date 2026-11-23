@@ -4,7 +4,7 @@
 // xlsx, que não permite estilos na versão gratuita.
 import type { Workbook, Worksheet } from "exceljs";
 
-import { dataBR, dataISO } from "../data/demonstracao";
+import { dataBR, dataISO } from "../data/negocio";
 import { baixarArquivo, nomeArquivo, type DadosRelatorio } from "./relatorio";
 
 const AZUL = "FF2563EB";
