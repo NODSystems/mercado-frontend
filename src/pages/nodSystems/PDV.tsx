@@ -1,445 +1,518 @@
-// Importa o useState para controlar os dados da tela.
-import { useState } from "react";
+// Ponto de Venda ligado ao backend.
+//
+// Produto entra no carrinho de três jeitos:
+//  - leitor USB: bipa e pronto (funciona mesmo sem clicar em nada);
+//  - câmera do celular/webcam: botão "Câmera";
+//  - busca por nome ou código digitado + Enter.
+// Ao finalizar, o backend confere estoque e preços, baixa o estoque
+// e grava a venda. Atalhos: F2 busca, F4 câmera, F9 finaliza.
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faBarcode, faTrash, faCheck, faRotateLeft } from "@fortawesome/free-solid-svg-icons";
 
-// Importa o CSS exclusivo da página de PDV.
 import "../../styles/nodSystems/PDV.css";
+import { useAuth } from "../../contexts/AuthContext";
+import { ApiError, formatarMoeda, mensagemDeErro } from "../../services/api";
+import {
+    produtosApi,
+    vendasApi,
+    formatarQuantidade,
+    unidadeFracionada,
+    NOMES_PAGAMENTO,
+    type FormaPagamento,
+    type Produto,
+    type Venda,
+} from "../../services/produtos";
+import { numeroBR } from "../../utils/validacao";
+import { useLeitorUSB } from "../../hooks/useLeitorUSB";
+import LeitorCodigo from "../../components/LeitorCodigo";
 
-// Define a estrutura de um produto disponível para venda.
-interface Produto {
-    id: number;
-    nome: string;
-    codigo: string;
-    preco: number;
-    estoque: number;
-}
-
-// Define a estrutura de um item adicionado ao carrinho.
 interface ItemCarrinho {
     produto: Produto;
     quantidade: number;
 }
 
-// Produtos de exemplo para testar o funcionamento do PDV.
-// Depois, esses dados poderão vir do banco de dados.
-const produtosExemplo: Produto[] = [
-    {
-        id: 1,
-        nome: "Arroz 5 kg",
-        codigo: "1001",
-        preco: 28.90,
-        estoque: 15,
-    },
-    {
-        id: 2,
-        nome: "Feijão 1 kg",
-        codigo: "1002",
-        preco: 8.50,
-        estoque: 20,
-    },
-    {
-        id: 3,
-        nome: "Leite integral",
-        codigo: "1003",
-        preco: 5.49,
-        estoque: 30,
-    },
-    {
-        id: 4,
-        nome: "Óleo de soja",
-        codigo: "1004",
-        preco: 7.99,
-        estoque: 12,
-    },
-    {
-        id: 5,
-        nome: "Açúcar 1 kg",
-        codigo: "1005",
-        preco: 4.79,
-        estoque: 18,
-    },
-    {
-        id: 6,
-        nome: "Macarrão 500 g",
-        codigo: "1006",
-        preco: 4.25,
-        estoque: 25,
-    },
-];
+type Mensagem = { texto: string; tipo: "info" | "erro" | "ok" } | null;
 
-// Componente principal da tela de vendas.
+const FORMAS: FormaPagamento[] = ["DINHEIRO", "PIX", "DEBITO", "CREDITO"];
+const centavos = (v: number) => Math.round((v + Number.EPSILON) * 100) / 100;
+const ativo = (p: Produto) => p.ativo === true || p.ativo === 1;
+
+function hora(valor: string) {
+    return new Date(valor).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+}
+
 function PDV() {
-    // Guarda o texto digitado na pesquisa de produtos.
+    const { pode, empresaAtual } = useAuth();
+    const empresaId = empresaAtual?.id ?? 0;
+
+    const [produtos, setProdutos] = useState<Produto[]>([]);
+    const [carregando, setCarregando] = useState(true);
+    const [erroCarga, setErroCarga] = useState("");
+
     const [pesquisa, setPesquisa] = useState("");
-
-    // Guarda os produtos adicionados ao carrinho.
     const [carrinho, setCarrinho] = useState<ItemCarrinho[]>([]);
-
-    // Guarda a forma de pagamento selecionada.
-    const [pagamento, setPagamento] = useState("Dinheiro");
-
-    // Guarda o valor recebido do cliente.
+    const [pagamento, setPagamento] = useState<FormaPagamento>("DINHEIRO");
     const [valorRecebido, setValorRecebido] = useState("");
+    const [desconto, setDesconto] = useState("");
+    const [mensagem, setMensagem] = useState<Mensagem>(null);
+    const [finalizando, setFinalizando] = useState(false);
 
-    // Guarda uma mensagem temporária sobre as ações realizadas.
-    const [mensagem, setMensagem] = useState("");
+    const [lendo, setLendo] = useState(false);
+    // Produto vendido por peso aguardando a quantidade (substituir = editando item do carrinho)
+    const [pesando, setPesando] = useState<{ produto: Produto; substituir: boolean } | null>(null);
+    const [peso, setPeso] = useState("");
+    const [concluida, setConcluida] = useState<Venda | null>(null);
 
-    // Formata os valores numéricos como moeda brasileira.
-    function formatarMoeda(valor: number) {
-        return valor.toLocaleString("pt-BR", {
-            style: "currency",
-            currency: "BRL",
-        });
-    }
+    const [vendasHoje, setVendasHoje] = useState<Venda[]>([]);
+    const [cancelando, setCancelando] = useState<Venda | null>(null);
+    const [motivoCancelamento, setMotivoCancelamento] = useState("");
+    const [erroCancelamento, setErroCancelamento] = useState("");
 
-    // Filtra os produtos pelo nome ou pelo código.
-    const produtosFiltrados = produtosExemplo.filter((produto) =>
-        produto.nome.toLowerCase().includes(pesquisa.toLowerCase()) ||
-        produto.codigo.includes(pesquisa)
-    );
+    const campoPesquisa = useRef<HTMLInputElement>(null);
+    const podeVerVendas = pode("vendas.visualizar");
+    const podeCancelar = pode("vendas.cancelar");
 
-    // Soma o preço de todos os itens do carrinho.
-    const total = carrinho.reduce(
-        (soma, item) => soma + item.produto.preco * item.quantidade,
-        0
-    );
+    const carregarProdutos = useCallback(async () => {
+        if (!empresaId) return;
+        try {
+            const r = await produtosApi.listar(empresaId);
+            setProdutos(r.produtos.filter(ativo));
+            setErroCarga("");
+        } catch (e) {
+            setErroCarga(mensagemDeErro(e));
+        } finally {
+            setCarregando(false);
+        }
+    }, [empresaId]);
 
-    // Soma a quantidade de unidades presentes no carrinho.
-    const quantidadeItens = carrinho.reduce(
-        (soma, item) => soma + item.quantidade,
-        0
-    );
+    const carregarVendas = useCallback(async () => {
+        if (!empresaId || !podeVerVendas) return;
+        try {
+            const r = await vendasApi.listar(empresaId);
+            setVendasHoje(r.vendas);
+        } catch {
+            /* a lista de vendas é complementar; o caixa continua funcionando */
+        }
+    }, [empresaId, podeVerVendas]);
 
-    // Adiciona um produto ao carrinho ou aumenta sua quantidade.
-    function adicionarProduto(produto: Produto) {
-        // Verifica quantas unidades desse produto já estão no carrinho.
-        const itemAtual = carrinho.find(
-            (item) => item.produto.id === produto.id
-        );
+    useEffect(() => { carregarProdutos(); carregarVendas(); }, [carregarProdutos, carregarVendas]);
 
-        // Impede adicionar mais unidades do que o estoque disponível.
-        if (itemAtual && itemAtual.quantidade >= produto.estoque) {
-            setMensagem("Quantidade máxima disponível em estoque.");
+    // ----- Carrinho -----
+
+    const noCarrinho = (id: number) => carrinho.find((i) => i.produto.id === id)?.quantidade ?? 0;
+
+    const colocar = useCallback((produto: Produto, quantidade: number) => {
+        const disponivel = Number(produto.estoque_atual);
+        const atual = carrinho.find((i) => i.produto.id === produto.id)?.quantidade ?? 0;
+        const nova = Math.round((atual + quantidade) * 1000) / 1000;
+
+        if (nova > disponivel) {
+            setMensagem({ texto: `Só há ${formatarQuantidade(disponivel, produto.unidade)} de “${produto.nome}” em estoque.`, tipo: "erro" });
             return;
         }
 
-        // Atualiza o carrinho sem modificar diretamente o estado anterior.
-        setCarrinho((itensAtuais) => {
-            const itemExistente = itensAtuais.find(
-                (item) => item.produto.id === produto.id
-            );
+        setCarrinho((itens) => itens.some((i) => i.produto.id === produto.id)
+            ? itens.map((i) => (i.produto.id === produto.id ? { ...i, quantidade: nova } : i))
+            : [...itens, { produto, quantidade }]);
+        setMensagem(null);
+    }, [carrinho]);
 
-            // Se o produto já existe, aumenta sua quantidade.
-            if (itemExistente) {
-                return itensAtuais.map((item) =>
-                    item.produto.id === produto.id
-                        ? { ...item, quantidade: item.quantidade + 1 }
-                        : item
-                );
+    // KG/L pergunta o peso; UN/CX entra 1
+    const adicionar = useCallback((produto: Produto) => {
+        if (unidadeFracionada(produto.unidade)) {
+            setPeso("");
+            setPesando({ produto, substituir: false });
+            return;
+        }
+        colocar(produto, 1);
+    }, [colocar]);
+
+    const adicionarPorCodigo = useCallback(async (codigo: string) => {
+        setLendo(false);
+        const limpo = codigo.replace(/\D/g, "");
+        if (!limpo) return;
+
+        let produto = produtos.find((p) => p.codigo_barras === limpo);
+        if (!produto) {
+            try {
+                produto = (await produtosApi.porCodigo(empresaId, limpo)).produto;
+                setProdutos((lista) => (lista.some((p) => p.id === produto!.id) ? lista : [...lista, produto!]));
+            } catch (e) {
+                setMensagem({
+                    texto: e instanceof ApiError && e.status === 404
+                        ? `Nenhum produto com o código ${limpo}. Cadastre-o no Estoque.`
+                        : mensagemDeErro(e),
+                    tipo: "erro",
+                });
+                return;
             }
+        }
+        adicionar(produto);
+        setPesquisa("");
+    }, [produtos, empresaId, adicionar]);
 
-            // Se for um novo produto, adiciona uma unidade ao carrinho.
-            return [
-                ...itensAtuais,
-                { produto, quantidade: 1 },
-            ];
-        });
+    useLeitorUSB(adicionarPorCodigo, !lendo && !pesando && !concluida && !cancelando);
 
-        // Limpa mensagens anteriores após adicionar o produto.
-        setMensagem("");
-    }
-
-    // Altera a quantidade de um produto no carrinho.
-    function alterarQuantidade(id: number, quantidade: number) {
-        // Localiza o produto original para consultar seu estoque.
-        const produto = produtosExemplo.find((item) => item.id === id);
-
-        // Não permite quantidade menor que uma unidade.
-        if (quantidade < 1) {
-            removerProduto(id);
+    function alterarQuantidade(item: ItemCarrinho, quantidade: number) {
+        if (quantidade <= 0) {
+            remover(item.produto.id);
             return;
         }
-
-        // Impede que a quantidade ultrapasse o estoque disponível.
-        if (produto && quantidade > produto.estoque) {
-            setMensagem("Quantidade máxima disponível em estoque.");
+        if (quantidade > Number(item.produto.estoque_atual)) {
+            setMensagem({ texto: `Só há ${formatarQuantidade(item.produto.estoque_atual, item.produto.unidade)} em estoque.`, tipo: "erro" });
             return;
         }
-
-        // Atualiza somente o item que teve sua quantidade alterada.
-        setCarrinho((itensAtuais) =>
-            itensAtuais.map((item) =>
-                item.produto.id === id
-                    ? { ...item, quantidade }
-                    : item
-            )
-        );
-
-        setMensagem("");
+        setCarrinho((itens) => itens.map((i) => (i.produto.id === item.produto.id ? { ...i, quantidade } : i)));
+        setMensagem(null);
     }
 
-    // Remove completamente um produto do carrinho.
-    function removerProduto(id: number) {
-        setCarrinho((itensAtuais) =>
-            itensAtuais.filter((item) => item.produto.id !== id)
-        );
-
-        setMensagem("");
+    function remover(id: number) {
+        setCarrinho((itens) => itens.filter((i) => i.produto.id !== id));
+        setMensagem(null);
     }
 
-    // Limpa a venda atual e os campos de pagamento.
-    function cancelarVenda() {
+    function limparVenda() {
         setCarrinho([]);
         setValorRecebido("");
-        setPagamento("Dinheiro");
-        setMensagem("");
+        setDesconto("");
+        setPagamento("DINHEIRO");
+        setMensagem(null);
+        campoPesquisa.current?.focus();
     }
 
-    // Finaliza apenas uma simulação de venda no frontend.
-    function finalizarVenda() {
-        // Impede finalizar uma venda sem produtos.
+    function confirmarPeso(evento: FormEvent) {
+        evento.preventDefault();
+        if (!pesando) return;
+        const q = Math.round(numeroBR(peso) * 1000) / 1000;
+        if (!Number.isFinite(q) || q <= 0) return;
+        const item = carrinho.find((i) => i.produto.id === pesando.produto.id);
+        if (pesando.substituir && item) alterarQuantidade(item, q);
+        else colocar(pesando.produto, q);
+        setPesando(null);
+        campoPesquisa.current?.focus();
+    }
+
+    // ----- Busca -----
+
+    const filtrados = useMemo(() => {
+        const termo = pesquisa.trim().toLowerCase();
+        const lista = termo
+            ? produtos.filter((p) => p.nome.toLowerCase().includes(termo) || (p.codigo_barras ?? "").includes(termo))
+            : produtos;
+        return lista.slice(0, 60);
+    }, [produtos, pesquisa]);
+
+    function aoTeclarPesquisa(e: KeyboardEvent<HTMLInputElement>) {
+        if (e.key !== "Enter") return;
+        e.preventDefault();
+        const texto = pesquisa.trim();
+        if (/^\d{8,14}$/.test(texto)) {
+            adicionarPorCodigo(texto);
+        } else if (filtrados.length === 1) {
+            adicionar(filtrados[0]);
+            setPesquisa("");
+        }
+    }
+
+    // ----- Totais -----
+
+    const subtotal = centavos(carrinho.reduce((t, i) => t + centavos(Number(i.produto.preco_venda) * i.quantidade), 0));
+    const valorDesconto = desconto.trim() ? numeroBR(desconto) : 0;
+    const descontoValido = Number.isFinite(valorDesconto) && valorDesconto >= 0 && valorDesconto <= subtotal;
+    const total = centavos(subtotal - (descontoValido ? valorDesconto : 0));
+    const recebido = numeroBR(valorRecebido);
+    const troco = pagamento === "DINHEIRO" && Number.isFinite(recebido) ? Math.max(0, centavos(recebido - total)) : 0;
+    const qtdItens = carrinho.reduce((t, i) => t + (unidadeFracionada(i.produto.unidade) ? 1 : i.quantidade), 0);
+
+    // ----- Finalizar -----
+
+    async function finalizarVenda() {
+        if (finalizando) return;
         if (carrinho.length === 0) {
-            setMensagem("Adicione pelo menos um produto à venda.");
+            setMensagem({ texto: "Adicione pelo menos um produto à venda.", tipo: "erro" });
+            return;
+        }
+        if (!descontoValido) {
+            setMensagem({ texto: "O desconto não pode ser maior que o total.", tipo: "erro" });
+            return;
+        }
+        if (pagamento === "DINHEIRO" && (!Number.isFinite(recebido) || recebido < total)) {
+            setMensagem({ texto: "O valor recebido é menor que o total.", tipo: "erro" });
+            document.getElementById("pdv-recebido")?.focus();
             return;
         }
 
-        // No pagamento em dinheiro, verifica se o valor recebido é suficiente.
-        if (
-            pagamento === "Dinheiro" &&
-            Number(valorRecebido.replace(",", ".")) < total
-        ) {
-            setMensagem("O valor recebido é insuficiente.");
-            return;
+        setFinalizando(true);
+        try {
+            const { venda } = await vendasApi.registrar(empresaId, {
+                itens: carrinho.map((i) => ({ produtoId: i.produto.id, quantidade: i.quantidade })),
+                formaPagamento: pagamento,
+                desconto: valorDesconto || 0,
+                valorRecebido: pagamento === "DINHEIRO" ? recebido : undefined,
+            });
+            setConcluida(venda);
+            setCarrinho([]);
+            setValorRecebido("");
+            setDesconto("");
+            setPagamento("DINHEIRO");
+            setMensagem(null);
+            carregarProdutos();
+            carregarVendas();
+        } catch (e) {
+            setMensagem({ texto: mensagemDeErro(e), tipo: "erro" });
+            // Estoque mudou (outro caixa vendeu): atualiza as quantidades
+            if (e instanceof ApiError && e.status === 409) carregarProdutos();
+        } finally {
+            setFinalizando(false);
         }
-
-        // Informa que a operação foi simulada, sem registrar no banco.
-        setMensagem("Venda simulada com sucesso!");
-
-        // Limpa o carrinho após a simulação.
-        setCarrinho([]);
-        setValorRecebido("");
     }
 
-    // Calcula o troco quando o pagamento é em dinheiro.
-    const troco =
-        pagamento === "Dinheiro"
-            ? Math.max(
-                0,
-                Number(valorRecebido.replace(",", ".")) - total
-            )
-            : 0;
+    function novaVenda() {
+        setConcluida(null);
+        setTimeout(() => campoPesquisa.current?.focus(), 0);
+    }
+
+    // ----- Cancelamento -----
+
+    async function confirmarCancelamento(evento: FormEvent) {
+        evento.preventDefault();
+        if (!cancelando) return;
+        setErroCancelamento("");
+        try {
+            await vendasApi.cancelar(empresaId, cancelando.id, motivoCancelamento.trim());
+            setCancelando(null);
+            setMotivoCancelamento("");
+            setMensagem({ texto: `Venda #${cancelando.id} cancelada. Os produtos voltaram ao estoque.`, tipo: "ok" });
+            carregarProdutos();
+            carregarVendas();
+        } catch (e) {
+            setErroCancelamento(mensagemDeErro(e));
+        }
+    }
+
+    // ----- Atalhos -----
+
+    const atalhos = useRef({ finalizarVenda, novaVenda });
+    atalhos.current = { finalizarVenda, novaVenda };
+
+    useEffect(() => {
+        function aoTeclar(e: globalThis.KeyboardEvent) {
+            if (e.key === "Escape") {
+                setLendo(false);
+                setPesando(null);
+                setCancelando(null);
+            }
+            if (concluida) {
+                if (e.key === "Enter" || e.key === "Escape") {
+                    e.preventDefault();
+                    atalhos.current.novaVenda();
+                }
+                return;
+            }
+            if (e.key === "F2") { e.preventDefault(); campoPesquisa.current?.focus(); }
+            if (e.key === "F4") { e.preventDefault(); setLendo(true); }
+            if (e.key === "F9") { e.preventDefault(); atalhos.current.finalizarVenda(); }
+        }
+        window.addEventListener("keydown", aoTeclar);
+        return () => window.removeEventListener("keydown", aoTeclar);
+    }, [concluida]);
+
+    const vendasConcluidas = vendasHoje.filter((v) => v.status === "CONCLUIDA");
+    const totalHoje = vendasConcluidas.reduce((t, v) => t + Number(v.total), 0);
 
     return (
         <main className="pdv-page">
-            {/* Cabeçalho da página de vendas. */}
             <header className="pdv-header">
                 <div>
                     <span className="pdv-subtitulo">VENDAS</span>
                     <h1>Ponto de Venda</h1>
-                    <p>Encontre produtos e registre suas vendas.</p>
+                    <p>Bipe o produto, leia com a câmera ou pesquise pelo nome. <span className="pdv-atalhos">F2 busca · F4 câmera · F9 finaliza</span></p>
                 </div>
 
-                {/* Mostra a quantidade de unidades no carrinho. */}
                 <div className="pdv-contador">
                     <span>Itens no carrinho</span>
-                    <strong>{quantidadeItens}</strong>
+                    <strong>{qtdItens}</strong>
                 </div>
             </header>
 
-            {/* Exibe mensagens de validação e resultado das ações. */}
             {mensagem && (
-                <div className="pdv-mensagem" role="status">
-                    {mensagem}
+                <div className={`pdv-mensagem pdv-mensagem--${mensagem.tipo}`} role={mensagem.tipo === "erro" ? "alert" : "status"}>
+                    {mensagem.texto}
                 </div>
             )}
 
-            {/* Divide a tela entre a lista de produtos e o carrinho. */}
             <div className="pdv-layout">
                 <section className="pdv-produtos">
-                    <div className="pdv-secao-header">
-                        <div>
-                            <h2>Produtos</h2>
-                            <p>Selecione um produto para adicionar à venda.</p>
-                        </div>
+                    <div className="pdv-busca">
+                        <input
+                            ref={campoPesquisa}
+                            className="pdv-pesquisa"
+                            type="text"
+                            placeholder="Nome ou código de barras + Enter"
+                            value={pesquisa}
+                            onChange={(evento) => setPesquisa(evento.target.value)}
+                            onKeyDown={aoTeclarPesquisa}
+                            aria-label="Pesquisar produtos"
+                            autoFocus
+                        />
+                        <button type="button" className="pdv-botao-camera" onClick={() => setLendo(true)}>
+                            <FontAwesomeIcon icon={faBarcode} /> Câmera
+                        </button>
                     </div>
 
-                    {/* Campo de busca por nome ou código. */}
-                    <input
-                        className="pdv-pesquisa"
-                        type="text"
-                        placeholder="Pesquisar por nome ou código..."
-                        value={pesquisa}
-                        onChange={(evento) => setPesquisa(evento.target.value)}
-                        aria-label="Pesquisar produtos"
-                    />
-
-                    {/* Lista de produtos disponíveis. */}
                     <div className="pdv-lista-produtos">
-                        {produtosFiltrados.length > 0 ? (
-                            produtosFiltrados.map((produto) => (
-                                <article
-                                    className="pdv-produto-card"
-                                    key={produto.id}
-                                >
-                                    <div className="pdv-produto-info">
-                                        <h3>{produto.nome}</h3>
-                                        <span>Código: {produto.codigo}</span>
-                                        <span>
-                                            Estoque: {produto.estoque} unidades
-                                        </span>
-                                    </div>
-
-                                    <div className="pdv-produto-compra">
-                                        <strong>
-                                            {formatarMoeda(produto.preco)}
-                                        </strong>
-
-                                        {/* Adiciona o produto ao carrinho. */}
-                                        <button
-                                            type="button"
-                                            onClick={() => adicionarProduto(produto)}
-                                            disabled={produto.estoque <= 0}
-                                        >
-                                            + Adicionar
-                                        </button>
-                                    </div>
-                                </article>
-                            ))
-                        ) : (
+                        {carregando ? (
+                            <div className="pdv-vazio">Carregando produtos…</div>
+                        ) : erroCarga ? (
                             <div className="pdv-vazio">
-                                Nenhum produto encontrado.
+                                {erroCarga}
+                                <button type="button" className="pdv-link" onClick={carregarProdutos}>Tentar de novo</button>
                             </div>
+                        ) : produtos.length === 0 ? (
+                            <div className="pdv-vazio">Nenhum produto cadastrado ainda. Cadastre no Estoque para começar a vender.</div>
+                        ) : filtrados.length === 0 ? (
+                            <div className="pdv-vazio">Nenhum produto encontrado.</div>
+                        ) : (
+                            filtrados.map((produto) => {
+                                const restante = Number(produto.estoque_atual) - noCarrinho(produto.id);
+                                const esgotado = restante <= 0;
+                                return (
+                                    <article className={`pdv-produto-card ${esgotado ? "pdv-produto-card--esgotado" : ""}`} key={produto.id}>
+                                        <div className="pdv-produto-info">
+                                            <h3>{produto.nome}</h3>
+                                            <span>{produto.codigo_barras ?? "sem código"}</span>
+                                            <span>
+                                                {esgotado ? "Sem estoque" : `Estoque: ${formatarQuantidade(restante, produto.unidade)}`}
+                                            </span>
+                                        </div>
+
+                                        <div className="pdv-produto-compra">
+                                            <strong>
+                                                {formatarMoeda(produto.preco_venda)}
+                                                {unidadeFracionada(produto.unidade) && <small>/{produto.unidade.toLowerCase()}</small>}
+                                            </strong>
+                                            <button type="button" onClick={() => adicionar(produto)} disabled={esgotado}>
+                                                + Adicionar
+                                            </button>
+                                        </div>
+                                    </article>
+                                );
+                            })
                         )}
                     </div>
                 </section>
 
-                {/* Painel lateral com os itens e o pagamento. */}
                 <aside className="pdv-carrinho">
                     <div className="pdv-secao-header">
                         <div>
                             <h2>Venda atual</h2>
-                            <p>Confira os produtos selecionados.</p>
+                            <p>Confira os produtos antes de finalizar.</p>
                         </div>
                     </div>
 
-                    {/* Lista dos itens adicionados ao carrinho. */}
                     <div className="pdv-itens-carrinho">
                         {carrinho.length > 0 ? (
-                            carrinho.map((item) => (
-                                <article
-                                    className="pdv-item-carrinho"
-                                    key={item.produto.id}
-                                >
-                                    <div className="pdv-item-info">
-                                        <strong>{item.produto.nome}</strong>
-                                        <span>
-                                            {formatarMoeda(item.produto.preco)} cada
-                                        </span>
-                                    </div>
+                            carrinho.map((item) => {
+                                const fracao = unidadeFracionada(item.produto.unidade);
+                                return (
+                                    <article className="pdv-item-carrinho" key={item.produto.id}>
+                                        <div className="pdv-item-info">
+                                            <strong>{item.produto.nome}</strong>
+                                            <span>
+                                                {formatarMoeda(item.produto.preco_venda)}
+                                                {fracao ? `/${item.produto.unidade.toLowerCase()}` : " cada"}
+                                            </span>
+                                        </div>
 
-                                    <div className="pdv-item-acoes">
-                                        {/* Diminui a quantidade do item. */}
-                                        <button
-                                            type="button"
-                                            onClick={() =>
-                                                alterarQuantidade(
-                                                    item.produto.id,
-                                                    item.quantidade - 1
-                                                )
-                                            }
-                                            aria-label={`Diminuir ${item.produto.nome}`}
-                                        >
-                                            −
-                                        </button>
+                                        <div className="pdv-item-acoes">
+                                            {fracao ? (
+                                                <button type="button" className="pdv-item-peso" onClick={() => { setPeso(String(item.quantidade).replace(".", ",")); setPesando({ produto: item.produto, substituir: true }); }}
+                                                    title="Alterar o peso">
+                                                    {formatarQuantidade(item.quantidade, item.produto.unidade)}
+                                                </button>
+                                            ) : (
+                                                <>
+                                                    <button type="button" onClick={() => alterarQuantidade(item, item.quantidade - 1)} aria-label={`Diminuir ${item.produto.nome}`}>−</button>
+                                                    <span>{item.quantidade}</span>
+                                                    <button type="button" onClick={() => alterarQuantidade(item, item.quantidade + 1)} aria-label={`Aumentar ${item.produto.nome}`}>+</button>
+                                                </>
+                                            )}
+                                            <button type="button" className="pdv-remover" onClick={() => remover(item.produto.id)} aria-label={`Remover ${item.produto.nome}`}>
+                                                <FontAwesomeIcon icon={faTrash} />
+                                            </button>
+                                        </div>
 
-                                        <span>{item.quantidade}</span>
-
-                                        {/* Aumenta a quantidade do item. */}
-                                        <button
-                                            type="button"
-                                            onClick={() =>
-                                                alterarQuantidade(
-                                                    item.produto.id,
-                                                    item.quantidade + 1
-                                                )
-                                            }
-                                            aria-label={`Aumentar ${item.produto.nome}`}
-                                        >
-                                            +
-                                        </button>
-
-                                        {/* Remove o produto inteiro da venda. */}
-                                        <button
-                                            type="button"
-                                            className="pdv-remover"
-                                            onClick={() =>
-                                                removerProduto(item.produto.id)
-                                            }
-                                            aria-label={`Remover ${item.produto.nome}`}
-                                        >
-                                            ×
-                                        </button>
-                                    </div>
-
-                                    <strong className="pdv-item-subtotal">
-                                        {formatarMoeda(
-                                            item.produto.preco * item.quantidade
-                                        )}
-                                    </strong>
-                                </article>
-                            ))
+                                        <strong className="pdv-item-subtotal">
+                                            {formatarMoeda(centavos(Number(item.produto.preco_venda) * item.quantidade))}
+                                        </strong>
+                                    </article>
+                                );
+                            })
                         ) : (
                             <div className="pdv-carrinho-vazio">
-                                <p>Nenhum produto adicionado.</p>
-                                <span>Selecione um produto para começar.</span>
+                                <p>Nenhum produto adicionado</p>
+                                <span>Bipe um código ou escolha um produto ao lado.</span>
                             </div>
                         )}
                     </div>
 
-                    {/* Resumo e total da venda. */}
                     <div className="pdv-resumo">
+                        <div className="pdv-linha-resumo">
+                            <span>Subtotal</span>
+                            <span>{formatarMoeda(subtotal)}</span>
+                        </div>
+
+                        <div className="pdv-linha-resumo pdv-linha-desconto">
+                            <label htmlFor="pdv-desconto">Desconto (R$)</label>
+                            <input
+                                id="pdv-desconto"
+                                inputMode="decimal"
+                                placeholder="0,00"
+                                value={desconto}
+                                onChange={(e) => setDesconto(e.target.value)}
+                                aria-invalid={!descontoValido}
+                            />
+                        </div>
+
                         <div className="pdv-total">
                             <span>Total da venda</span>
                             <strong>{formatarMoeda(total)}</strong>
                         </div>
 
-                        {/* Seleção da forma de pagamento. */}
-                        <label className="pdv-label" htmlFor="pdv-pagamento">
-                            Forma de pagamento
-                        </label>
-
-                        <select
-                            id="pdv-pagamento"
-                            value={pagamento}
-                            onChange={(evento) => setPagamento(evento.target.value)}
-                        >
-                            <option value="Dinheiro">Dinheiro</option>
-                            <option value="Pix">Pix</option>
-                            <option value="Cartão de débito">Cartão de débito</option>
-                            <option value="Cartão de crédito">Cartão de crédito</option>
-                        </select>
-
-                        {/* O valor recebido e o troco aparecem em dinheiro. */}
-                        {pagamento === "Dinheiro" && (
-                            <div className="pdv-dinheiro">
-                                <label
-                                    className="pdv-label"
-                                    htmlFor="pdv-recebido"
+                        <span className="pdv-label">Forma de pagamento</span>
+                        <div className="pdv-formas" role="radiogroup" aria-label="Forma de pagamento">
+                            {FORMAS.map((f) => (
+                                <button
+                                    key={f}
+                                    type="button"
+                                    role="radio"
+                                    aria-checked={pagamento === f}
+                                    className={pagamento === f ? "selecionada" : ""}
+                                    onClick={() => setPagamento(f)}
                                 >
-                                    Valor recebido (R$)
-                                </label>
+                                    {{ DINHEIRO: "Dinheiro", PIX: "Pix", DEBITO: "Débito", CREDITO: "Crédito" }[f]}
+                                </button>
+                            ))}
+                        </div>
 
+                        {pagamento === "DINHEIRO" && (
+                            <div className="pdv-dinheiro">
+                                <label className="pdv-label" htmlFor="pdv-recebido">Valor recebido (R$)</label>
                                 <input
                                     id="pdv-recebido"
-                                    type="number"
-                                    min="0"
-                                    step="0.01"
+                                    inputMode="decimal"
                                     placeholder="0,00"
                                     value={valorRecebido}
-                                    onChange={(evento) =>
-                                        setValorRecebido(evento.target.value)
-                                    }
+                                    onChange={(evento) => setValorRecebido(evento.target.value)}
+                                    onKeyDown={(e) => e.key === "Enter" && finalizarVenda()}
                                 />
-
+                                <div className="pdv-notas">
+                                    <button type="button" onClick={() => setValorRecebido(total.toFixed(2).replace(".", ","))} disabled={!total}>Exato</button>
+                                    {[10, 20, 50, 100].filter((n) => n >= total).slice(0, 3).map((n) => (
+                                        <button type="button" key={n} onClick={() => setValorRecebido(`${n},00`)}>R$ {n}</button>
+                                    ))}
+                                </div>
                                 <div className="pdv-troco">
                                     <span>Troco</span>
                                     <strong>{formatarMoeda(troco)}</strong>
@@ -447,27 +520,119 @@ function PDV() {
                             </div>
                         )}
 
-                        {/* Ações disponíveis para a venda atual. */}
                         <div className="pdv-botoes">
-                            <button
-                                type="button"
-                                className="pdv-botao-cancelar"
-                                onClick={cancelarVenda}
-                            >
-                                Cancelar venda
+                            <button type="button" className="pdv-botao-cancelar" onClick={limparVenda} disabled={carrinho.length === 0}>
+                                Limpar
                             </button>
-
-                            <button
-                                type="button"
-                                className="pdv-botao-finalizar"
-                                onClick={finalizarVenda}
-                            >
-                                Finalizar venda
+                            <button type="button" className="pdv-botao-finalizar" onClick={finalizarVenda} disabled={finalizando || carrinho.length === 0}>
+                                {finalizando ? "Registrando…" : "Finalizar venda"}
                             </button>
                         </div>
                     </div>
                 </aside>
             </div>
+
+            {podeVerVendas && (
+                <section className="pdv-vendas-hoje">
+                    <div className="pdv-vendas-hoje-cabecalho">
+                        <h2>{pode("relatorios.visualizar") ? "Vendas de hoje" : "Minhas vendas de hoje"}</h2>
+                        <span>{vendasConcluidas.length} {vendasConcluidas.length === 1 ? "venda" : "vendas"} · {formatarMoeda(totalHoje)}</span>
+                    </div>
+
+                    {vendasHoje.length === 0 ? (
+                        <p className="pdv-vazio">Nenhuma venda hoje ainda.</p>
+                    ) : (
+                        <ul>
+                            {vendasHoje.slice(0, 15).map((v) => (
+                                <li key={v.id} className={v.status === "CANCELADA" ? "cancelada" : ""}>
+                                    <div>
+                                        <strong>#{v.id} · {hora(v.data_criacao)}</strong>
+                                        <span>
+                                            {v.itens.length} {v.itens.length === 1 ? "item" : "itens"} · {NOMES_PAGAMENTO[v.forma_pagamento]}
+                                            {v.vendedor ? ` · ${v.vendedor}` : ""}
+                                        </span>
+                                        {v.status === "CANCELADA" && <small>Cancelada: {v.motivo_cancelamento}</small>}
+                                    </div>
+                                    <div className="pdv-venda-direita">
+                                        <strong>{formatarMoeda(v.total)}</strong>
+                                        {v.status === "CONCLUIDA" && podeCancelar && (
+                                            <button type="button" onClick={() => { setCancelando(v); setMotivoCancelamento(""); setErroCancelamento(""); }}>
+                                                <FontAwesomeIcon icon={faRotateLeft} /> Cancelar
+                                            </button>
+                                        )}
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </section>
+            )}
+
+            {lendo && <LeitorCodigo titulo="Ler produto" onLido={adicionarPorCodigo} onFechar={() => setLendo(false)} />}
+
+            {pesando && (
+                <div className="pdv-modal-fundo" onMouseDown={(e) => e.target === e.currentTarget && setPesando(null)}>
+                    <form className="pdv-modal" onSubmit={confirmarPeso} role="dialog" aria-modal="true" aria-label="Informar peso">
+                        <h2>{pesando.produto.nome}</h2>
+                        <p>{formatarMoeda(pesando.produto.preco_venda)} por {pesando.produto.unidade.toLowerCase()} · estoque {formatarQuantidade(Number(pesando.produto.estoque_atual) - (pesando.substituir ? 0 : noCarrinho(pesando.produto.id)), pesando.produto.unidade)}</p>
+                        <label className="pdv-label" htmlFor="pdv-peso">{pesando.produto.unidade === "KG" ? "Peso (kg)" : "Quantidade (L)"}</label>
+                        <input id="pdv-peso" inputMode="decimal" value={peso} onChange={(e) => setPeso(e.target.value)} placeholder="0,500" autoFocus />
+                        {Number.isFinite(numeroBR(peso)) && numeroBR(peso) > 0 && (
+                            <p className="pdv-modal-total">= {formatarMoeda(centavos(numeroBR(peso) * Number(pesando.produto.preco_venda)))}</p>
+                        )}
+                        <div className="pdv-botoes">
+                            <button type="button" className="pdv-botao-cancelar" onClick={() => setPesando(null)}>Voltar</button>
+                            <button type="submit" className="pdv-botao-finalizar">Adicionar</button>
+                        </div>
+                    </form>
+                </div>
+            )}
+
+            {concluida && (
+                <div className="pdv-modal-fundo">
+                    <div className="pdv-modal pdv-modal--sucesso" role="dialog" aria-modal="true" aria-label="Venda concluída">
+                        <div className="pdv-sucesso-icone"><FontAwesomeIcon icon={faCheck} /></div>
+                        <h2>Venda #{concluida.id} registrada</h2>
+                        <ul className="pdv-cupom">
+                            {concluida.itens.map((i) => (
+                                <li key={i.id}>
+                                    <span>{formatarQuantidade(i.quantidade, i.unidade)} {i.nome_produto}</span>
+                                    <span>{formatarMoeda(i.subtotal)}</span>
+                                </li>
+                            ))}
+                            {Number(concluida.desconto) > 0 && (
+                                <li><span>Desconto</span><span>−{formatarMoeda(concluida.desconto)}</span></li>
+                            )}
+                            <li className="pdv-cupom-total"><span>Total · {NOMES_PAGAMENTO[concluida.forma_pagamento]}</span><span>{formatarMoeda(concluida.total)}</span></li>
+                        </ul>
+                        {concluida.forma_pagamento === "DINHEIRO" && (
+                            <div className="pdv-troco pdv-troco--destaque">
+                                <span>Troco</span>
+                                <strong>{formatarMoeda(concluida.troco)}</strong>
+                            </div>
+                        )}
+                        <button type="button" className="pdv-botao-finalizar" onClick={novaVenda} autoFocus>
+                            Nova venda (Enter)
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {cancelando && (
+                <div className="pdv-modal-fundo" onMouseDown={(e) => e.target === e.currentTarget && setCancelando(null)}>
+                    <form className="pdv-modal" onSubmit={confirmarCancelamento} role="dialog" aria-modal="true" aria-label="Cancelar venda">
+                        <h2>Cancelar venda #{cancelando.id}?</h2>
+                        <p>{formatarMoeda(cancelando.total)} · os produtos voltam para o estoque.</p>
+                        <label className="pdv-label" htmlFor="pdv-motivo">Motivo</label>
+                        <input id="pdv-motivo" value={motivoCancelamento} onChange={(e) => setMotivoCancelamento(e.target.value.slice(0, 255))} placeholder="Ex.: Cliente desistiu" autoFocus />
+                        {erroCancelamento && <p className="pdv-modal-erro">{erroCancelamento}</p>}
+                        <div className="pdv-botoes">
+                            <button type="button" className="pdv-botao-cancelar" onClick={() => setCancelando(null)}>Voltar</button>
+                            <button type="submit" className="pdv-botao-perigo" disabled={motivoCancelamento.trim().length < 3}>Cancelar venda</button>
+                        </div>
+                    </form>
+                </div>
+            )}
         </main>
     );
 }

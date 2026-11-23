@@ -409,6 +409,299 @@
     border-color: #315cc5;
 }
 
+
+/* ===== PDV LIGADO AO BACKEND ===== */
+
+.pdv-atalhos {
+    margin-left: 6px;
+    color: #9ca3af;
+    font-size: 12px;
+}
+
+.pdv-mensagem--erro {
+    color: #b91c1c;
+    background: #fef2f2;
+    border-color: #fecaca;
+}
+
+.pdv-mensagem--ok {
+    color: #166534;
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+}
+
+.pdv-busca {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 18px;
+}
+
+.pdv-busca .pdv-pesquisa {
+    flex: 1;
+    min-width: 0;
+    margin-bottom: 0;
+}
+
+.pdv-botao-camera {
+    flex-shrink: 0;
+    padding: 0 14px;
+    color: #3159b8;
+    background: #edf3ff;
+    border: 1px solid #d7e3ff;
+    border-radius: 8px;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.pdv-botao-camera:hover { background: #dfe9ff; }
+.pdv-botao-camera svg { margin-right: 5px; }
+
+.pdv-lista-produtos {
+    max-height: calc(100vh - 290px);
+    min-height: 240px;
+    overflow-y: auto;
+    padding-right: 2px;
+}
+
+.pdv-produto-card--esgotado { opacity: 0.55; }
+.pdv-produto-compra small { margin-left: 2px; color: #9ca3af; font-size: 11px; font-weight: 500; }
+
+.pdv-link {
+    display: block;
+    margin: 10px auto 0;
+    color: #4171e2;
+    background: none;
+    border: none;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.pdv-item-acoes .pdv-item-peso {
+    width: auto;
+    padding: 0 10px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.pdv-linha-resumo {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    color: #4b5563;
+    font-size: 13px;
+}
+
+.pdv-linha-desconto label { font-weight: 600; }
+.pdv-resumo .pdv-linha-desconto input { width: 110px; min-height: 34px; padding: 6px 9px; text-align: right; }
+.pdv-resumo input[aria-invalid="true"] { border-color: #dc2626; }
+
+.pdv-formas {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+}
+
+.pdv-formas button {
+    min-height: 38px;
+    padding: 8px;
+    color: #4b5563;
+    background: #fff;
+    border: 1px solid #d1d5db;
+    border-radius: 7px;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.pdv-formas button.selecionada {
+    color: #3159b8;
+    background: #edf3ff;
+    border-color: #4171e2;
+    box-shadow: inset 0 0 0 1px #4171e2;
+}
+
+.pdv-notas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.pdv-notas button {
+    padding: 6px 10px;
+    color: #374151;
+    background: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.pdv-notas button:hover:not(:disabled) { background: #e5e7eb; }
+
+.pdv-botoes button:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.pdv-botao-perigo {
+    color: #fff;
+    background: #dc2626;
+    border: 1px solid #dc2626;
+}
+
+/* Vendas de hoje */
+.pdv-vendas-hoje {
+    margin-top: 22px;
+    padding: 22px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+}
+
+.pdv-vendas-hoje-cabecalho {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
+.pdv-vendas-hoje-cabecalho h2 { margin: 0; font-size: 18px; }
+.pdv-vendas-hoje-cabecalho span { color: #6b7280; font-size: 13px; }
+
+.pdv-vendas-hoje ul { margin: 0; padding: 0; list-style: none; }
+
+.pdv-vendas-hoje li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 11px 0;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.pdv-vendas-hoje li > div:first-child {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+}
+
+.pdv-vendas-hoje li span,
+.pdv-vendas-hoje li small { color: #6b7280; font-size: 12px; }
+.pdv-vendas-hoje li.cancelada strong { color: #9ca3af; text-decoration: line-through; }
+.pdv-vendas-hoje li.cancelada small { color: #b91c1c; text-decoration: none; }
+
+.pdv-venda-direita {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 10px;
+}
+
+.pdv-venda-direita button {
+    padding: 6px 10px;
+    color: #b91c1c;
+    background: #fff;
+    border: 1px solid #fecaca;
+    border-radius: 6px;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+/* Janelas (peso, venda concluída, cancelamento) */
+.pdv-modal-fundo {
+    position: fixed;
+    inset: 0;
+    z-index: 1100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: rgba(15, 23, 42, 0.5);
+}
+
+.pdv-modal {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: min(420px, 100%);
+    max-height: 100%;
+    overflow-y: auto;
+    padding: 24px;
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 20px 50px rgba(15, 23, 42, 0.3);
+    box-sizing: border-box;
+}
+
+.pdv-modal h2 { margin: 0; font-size: 19px; }
+.pdv-modal p { margin: 0; color: #6b7280; font-size: 13px; }
+
+.pdv-modal input {
+    min-height: 44px;
+    padding: 9px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font: inherit;
+    font-size: 18px;
+}
+
+.pdv-modal .pdv-modal-total { color: #3159b8; font-size: 16px; font-weight: 700; }
+.pdv-modal .pdv-modal-erro { color: #b91c1c; }
+.pdv-modal .pdv-botoes { flex-direction: row; }
+
+.pdv-modal--sucesso { align-items: stretch; text-align: center; }
+
+.pdv-sucesso-icone {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 54px;
+    height: 54px;
+    margin: 0 auto 4px;
+    color: #fff;
+    background: #16a34a;
+    border-radius: 50%;
+    font-size: 24px;
+}
+
+.pdv-cupom {
+    margin: 6px 0;
+    padding: 12px 0;
+    border-top: 1px dashed #d1d5db;
+    border-bottom: 1px dashed #d1d5db;
+    list-style: none;
+    text-align: left;
+}
+
+.pdv-cupom li {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 3px 0;
+    font-size: 13px;
+}
+
+.pdv-cupom .pdv-cupom-total { margin-top: 6px; font-weight: 700; font-size: 15px; }
+
+.pdv-troco--destaque {
+    padding: 12px 14px;
+    background: #f0fdf4;
+    border-radius: 10px;
+    font-size: 15px;
+}
+
+.pdv-troco--destaque strong { font-size: 22px; }
+
 /* ===== TABLETS E NOTEBOOKS MENORES ===== */
 
 @media (max-width: 1000px) {
@@ -520,3 +813,20 @@
         font-size: 20px;
     }
 }
+
+@media (max-width: 700px) {
+    .pdv-lista-produtos { max-height: 50vh; }
+    .pdv-atalhos { display: none; }
+}
+
+.pdv-modal--sucesso > .pdv-botao-finalizar {
+    min-height: 46px;
+    margin-top: 4px;
+    border-radius: 8px;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.pdv-troco--destaque { align-items: center; }
