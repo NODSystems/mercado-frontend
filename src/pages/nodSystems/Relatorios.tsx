@@ -1,5 +1,5 @@
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
     faChartLine,
     faShoppingCart,
@@ -16,13 +16,16 @@ import '../../styles/nodSystems/Relatorios.css';
 
 import { useAuth } from '../../contexts/AuthContext';
 import {
+    carregarEstoque,
+    carregarFinanceiro,
+    carregarVendas,
     dataBR as dataFormatada,
-    ESTA_EM_DEMONSTRACAO,
-    estoqueDemonstracao,
-    financeiroDemonstracao,
+    linhasDeVenda,
     moeda,
-    vendasDemonstracao,
-} from '../../data/demonstracao';
+    type MovimentoFinanceiro,
+    type ProdutoEstoque,
+    type Venda,
+} from '../../data/negocio';
 import { calcularRelatorio } from '../../services/relatorio';
 
 const nomesPeriodo: Record<string, string> = {
@@ -41,7 +44,7 @@ function hojeISO() {
 }
 
 function Relatorios() {
-    const { usuario, empresaAtual } = useAuth();
+    const { usuario, empresaAtual, pode } = useAuth();
 
     // Controla o filtro de período selecionado.
     const [periodo, setPeriodo] = useState('mes');
@@ -74,18 +77,49 @@ function Relatorios() {
         return { inicio, fim };
     }, [periodo, dataInicial, dataFinal]);
 
+    // Dados reais do período (vendas, financeiro e estoque)
+    const [dados, setDados] = useState<{ vendas: Venda[]; movimentos: MovimentoFinanceiro[]; estoque: ProdutoEstoque[] }>({ vendas: [], movimentos: [], estoque: [] });
+    const [carregando, setCarregando] = useState(true);
+    const [erroDados, setErroDados] = useState('');
+    const verFinanceiro = pode('financeiro.visualizar');
+    const verEstoque = pode('produtos.visualizar');
+
+    useEffect(() => {
+        if (!empresaAtual) return;
+        let cancelado = false;
+        setCarregando(true);
+        setErroDados('');
+
+        Promise.all([
+            carregarVendas(empresaAtual.id, intervalo.inicio, intervalo.fim).then(linhasDeVenda),
+            verFinanceiro ? carregarFinanceiro(empresaAtual.id, intervalo.inicio, intervalo.fim) : Promise.resolve([]),
+            verEstoque ? carregarEstoque(empresaAtual.id) : Promise.resolve([]),
+        ])
+            .then(([vendas, movimentos, estoque]) => {
+                if (!cancelado) setDados({ vendas, movimentos, estoque });
+            })
+            .catch(() => {
+                if (!cancelado) setErroDados('Não foi possível carregar os dados do período. Tente novamente.');
+            })
+            .finally(() => {
+                if (!cancelado) setCarregando(false);
+            });
+
+        return () => { cancelado = true; };
+    }, [empresaAtual, intervalo, verFinanceiro, verEstoque]);
+
     // Todos os números saem daqui: a tela e os arquivos usam os mesmos
     const relatorio = useMemo(() => calcularRelatorio({
-        vendas: vendasDemonstracao(),
-        movimentos: financeiroDemonstracao(),
-        estoque: estoqueDemonstracao(),
+        vendas: dados.vendas,
+        movimentos: dados.movimentos,
+        estoque: dados.estoque,
         inicio: intervalo.inicio,
         fim: intervalo.fim,
         empresa: empresaAtual?.nome_fantasia || empresaAtual?.razao_social || 'Minha empresa',
         usuario: usuario?.nome ?? '',
         periodoTexto: nomesPeriodo[periodo],
-        demonstracao: ESTA_EM_DEMONSTRACAO,
-    }), [intervalo, empresaAtual, usuario, periodo]);
+        demonstracao: false,
+    }), [dados, intervalo, empresaAtual, usuario, periodo]);
 
     const vendas = relatorio.vendas;
     const totalVendas = relatorio.totais.vendas;
@@ -153,6 +187,10 @@ function Relatorios() {
                 </div>
             </header>
 
+            {erroDados && (
+                <div className="nod-alerta nod-alerta--erro" role="alert">{erroDados}</div>
+            )}
+
             {erroExportar && (
                 <div className="nod-alerta nod-alerta--erro" role="alert">{erroExportar}</div>
             )}
@@ -207,7 +245,7 @@ function Relatorios() {
                         </span>
                     </div>
                     <strong>{moeda(totalVendas)}</strong>
-                    <small>{vendas.length} registros de venda</small>
+                    <small>{carregando ? 'Carregando…' : `${relatorio.totais.quantidade} ${relatorio.totais.quantidade === 1 ? 'venda' : 'vendas'}`}</small>
                 </article>
 
                 <article className="relatorio-card">
@@ -218,7 +256,7 @@ function Relatorios() {
                         </span>
                     </div>
                     <strong>{moeda(totalEntradas)}</strong>
-                    <small>Movimentações de entrada</small>
+                    <small>Vendas e outras entradas</small>
                 </article>
 
                 <article className="relatorio-card">
@@ -229,7 +267,7 @@ function Relatorios() {
                         </span>
                     </div>
                     <strong>{moeda(totalDespesas)}</strong>
-                    <small>Movimentações de saída</small>
+                    <small>Equipe e lançamentos de saída</small>
                 </article>
 
                 <article className="relatorio-card">
@@ -260,11 +298,15 @@ function Relatorios() {
                     </div>
 
                     <div className="relatorios-dado-linha">
-                        <span>Vendas registradas</span>
-                        <strong>{vendas.length}</strong>
+                        <span>Vendas realizadas</span>
+                        <strong>{relatorio.totais.quantidade}</strong>
                     </div>
                     <div className="relatorios-dado-linha">
-                        <span>Ticket médio por registro</span>
+                        <span>Itens vendidos</span>
+                        <strong>{relatorio.totais.itens.toLocaleString('pt-BR')}</strong>
+                    </div>
+                    <div className="relatorios-dado-linha">
+                        <span>Ticket médio por venda</span>
                         <strong>{moeda(ticketMedio)}</strong>
                     </div>
                     <div className="relatorios-dado-linha">
@@ -300,7 +342,7 @@ function Relatorios() {
                             estoqueBaixo.map((produto) => (
                                 <div key={produto.nome} className="relatorios-produto">
                                     <span>{produto.nome}</span>
-                                    <strong>{produto.quantidade} un.</strong>
+                                    <strong>{produto.quantidade.toLocaleString('pt-BR')}</strong>
                                 </div>
                             ))
                         ) : (
@@ -345,7 +387,7 @@ function Relatorios() {
                     <span className="relatorios-contagem">
                         {vendas.length > LIMITE_TABELA
                             ? `${LIMITE_TABELA} mais recentes de ${vendas.length}`
-                            : `${vendas.length} registros`}
+                            : `${vendas.length} ${vendas.length === 1 ? 'item vendido' : 'itens vendidos'}`}
                     </span>
                 </div>
 
@@ -354,6 +396,7 @@ function Relatorios() {
                         <thead>
                             <tr>
                                 <th>Data</th>
+                                <th>Venda</th>
                                 <th>Produto</th>
                                 <th>Quantidade</th>
                                 <th>Pagamento</th>
@@ -363,10 +406,11 @@ function Relatorios() {
                         <tbody>
                             {vendas.length > 0 ? (
                                 vendasRecentes.map((venda, indice) => (
-                                    <tr key={`${venda.data}-${venda.produto}-${indice}`}>
-                                        <td>{dataFormatada(venda.data)}</td>
+                                    <tr key={`${venda.vendaId}-${venda.produto}-${indice}`}>
+                                        <td>{dataFormatada(venda.data)} {venda.hora}</td>
+                                        <td>#{venda.vendaId}</td>
                                         <td>{venda.produto}</td>
-                                        <td>{venda.quantidade}</td>
+                                        <td>{venda.quantidade.toLocaleString('pt-BR')}</td>
                                         <td>{venda.pagamento}</td>
                                         <td className="relatorios-valor">
                                             {moeda(venda.valor)}
@@ -375,8 +419,8 @@ function Relatorios() {
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan={5} className="relatorios-vazio">
-                                        Nenhuma venda encontrada nesse período.
+                                    <td colSpan={6} className="relatorios-vazio">
+                                        {carregando ? 'Carregando…' : 'Nenhuma venda encontrada nesse período.'}
                                     </td>
                                 </tr>
                             )}
@@ -385,11 +429,9 @@ function Relatorios() {
                 </div>
             </section>
 
-            {/* Informa que os dados ainda são apenas exemplos */}
             <p className="relatorios-aviso">
-                <strong>Modo de demonstração:</strong> os valores exibidos são
-                exemplos e ainda não representam os dados reais da empresa.
-                A tabela mostra as vendas mais recentes; o PDF e o Excel levam todas.
+                Dados reais das vendas do PDV{verFinanceiro ? ', do financeiro' : ''}{verEstoque ? ' e do estoque' : ''}.
+                A tabela mostra os itens mais recentes; o PDF e o Excel levam todos.
             </p>
         </main>
     );

@@ -16,22 +16,50 @@ npm run dev
 
 O endereço da API vem de `VITE_API_URL` (copie `.env.example` para `.env.local` se precisar mudar). Sem ele, usa `http://localhost:3333`.
 
-## O que já está ligado ao backend
+## Abrir no celular (câmera para ler código de barras)
+
+O celular só libera a câmera em sites `https`. Com o computador e o celular **na mesma rede Wi-Fi**:
+
+```bash
+npm run dev:rede
+```
+
+1. O Vite mostra o endereço da rede, por exemplo `https://192.168.0.15:5173`. Abra esse endereço no celular.
+2. O navegador avisa que o certificado não é confiável. Toque em **Avançado → Continuar**. O certificado é de desenvolvimento.
+3. As chamadas à API passam pelo próprio Vite (`/api` → `http://localhost:3333`). O backend continua rodando normalmente no computador.
+
+No computador, `npm run dev` (http://localhost:5173) também libera a webcam.
+
+## Telas
+
+Todas usam dados do backend.
 
 | Tela | O que faz |
 |------|-----------|
-| Cadastro | Cria a conta e pede para confirmar o e-mail (com reenvio do link) |
-| Login | Entra com cookie de sessão; avisa se o e-mail não foi confirmado |
-| Minhas empresas | Lista as empresas do usuário e escolhe em qual trabalhar |
-| Configurar empresa | Cadastra a empresa |
-| Navbar | Nome, cargo, trocar de empresa e sair |
-| Equipe | Lista funcionários (filtros por cargo e status), envia convites e abre o painel **Gerenciar**: editar dados, mudar cargo, inativar/reativar, cancelar convite, remover e registrar pagamentos |
-| Aceitar convite | Página do link do e-mail de convite |
-| Perfil | Edita o nome, troca a senha e mostra os últimos logins |
+| Cadastro e login | Conta com confirmação de e-mail; sessão por cookie |
+| Minhas empresas | Escolhe em qual empresa trabalhar |
+| Visão Geral | Vendas de hoje e do mês, gráfico da semana, estoque baixo, convites pendentes e últimas vendas |
+| PDV | Venda por leitor USB, câmera ou busca; produto por peso; desconto, troco; cancelamento com devolução ao estoque |
+| Estoque | Cadastro pelo código de barras (câmera, leitor ou digitado), entradas, saídas, ajustes e histórico |
+| Financeiro | Vendas e salários entram sozinhos; lançamentos manuais de contas e compras |
+| Relatórios | Indicadores do período e exportação em PDF e Excel |
+| Equipe | Convites, cargos, permissões, inativação e pagamentos |
+| Perfil | Nome, senha e últimos logins |
 
-Ainda sem backend (dados de exemplo): PDV, Estoque, Financeiro, Relatórios, Visão geral (cards), recuperação de senha e foto do perfil.
+Cada cargo vê só o que pode usar:
+- **Vendedor:** PDV e as próprias vendas.
+- **Estoquista:** movimenta o estoque, mas não cadastra produtos.
+- **Gerente:** quase tudo, exceto pagar e remover funcionários.
 
-Arquivos principais da integração: `src/services/api.ts` (requisições), `src/contexts/AuthContext.tsx` (usuário logado e empresa selecionada) e `src/components/RotaProtegida.tsx` (bloqueia páginas sem login).
+## Dados para apresentação
+
+No backend, `npm run demo` cria o "Mercado Demonstração", com 30 dias de vendas fictícias. Senha de todas as contas: `demo12345`.
+- `dono@demo.nod`
+- `gerente@demo.nod`
+- `vendedor@demo.nod`
+- `estoque@demo.nod`
+
+Arquivos principais da integração: `src/services/api.ts` (requisições), `src/services/produtos.ts` e `src/data/negocio.ts` (produtos, vendas e financeiro), `src/contexts/AuthContext.tsx` (usuário logado e empresa selecionada) e `src/components/RotaProtegida.tsx` (bloqueia páginas sem login).
 
 ---
 

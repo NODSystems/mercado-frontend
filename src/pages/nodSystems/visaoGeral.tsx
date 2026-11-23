@@ -2,8 +2,7 @@
 // - Banner na largura toda, no azul do sistema, com saudação e atalhos.
 // - Indicadores lado a lado (sem carrossel: o dono vê tudo de uma vez).
 // - Atenções com coisas para resolver, cada uma levando à tela certa.
-// - Equipe com dados reais do backend; vendas e estoque com dados de
-//   demonstração (marcados) até existirem as rotas no backend.
+// - Tudo com dados reais: vendas do PDV, estoque e equipe.
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -25,12 +24,15 @@ import {
 import { useAuth } from "../../contexts/AuthContext";
 import { api, nomeDoCargo, type Funcionario } from "../../services/api";
 import {
+    carregarEstoque,
+    carregarVendas,
     dataISO,
-    ESTA_EM_DEMONSTRACAO,
-    estoqueDemonstracao,
+    horaHHMM,
     moeda,
-    vendasDemonstracao,
-} from "../../data/demonstracao";
+    NOME_PAGAMENTO_CURTO,
+    type ProdutoEstoque,
+} from "../../data/negocio";
+import { formatarQuantidade, type Venda as VendaApi } from "../../services/produtos";
 
 import "../../styles/nodSystems/VisaoGeral.css";
 
@@ -82,20 +84,44 @@ function VisaoGeral() {
     const ativos = funcionarios?.filter((f) => f.status === "ATIVO").length ?? 0;
     const convidados = funcionarios?.filter((f) => f.status === "CONVIDADO") ?? [];
 
-    // ---------------- Vendas e estoque (demonstração) ----------------
+    // ---------------- Vendas e estoque (dados reais) ----------------
+    // Vendedor sem "relatorios.visualizar" recebe só as próprias vendas.
+    const [vendas, setVendas] = useState<VendaApi[]>([]);
+    const [estoque, setEstoque] = useState<ProdutoEstoque[]>([]);
+    const [erroDados, setErroDados] = useState("");
+
+    useEffect(() => {
+        if (!empresaAtual) return;
+        const hoje = new Date();
+        const inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+        const seteDias = new Date(hoje);
+        seteDias.setDate(hoje.getDate() - 7);
+        if (seteDias < inicio) inicio.setTime(seteDias.getTime());
+
+        if (verVendas) {
+            carregarVendas(empresaAtual.id, inicio, hoje)
+                .then(setVendas)
+                .catch(() => setErroDados("Não foi possível carregar as vendas."));
+        }
+        if (verEstoque) {
+            carregarEstoque(empresaAtual.id).then(setEstoque).catch(() => setEstoque([]));
+        }
+    }, [empresaAtual, verVendas, verEstoque]);
+
     const indicadores = useMemo(() => {
-        const vendas = vendasDemonstracao();
+        const concluidas = vendas.filter((v) => v.status === "CONCLUIDA");
         const hoje = new Date();
         const ontem = new Date();
         ontem.setDate(hoje.getDate() - 1);
 
-        const doDia = (data: string) => vendas.filter((v) => v.data === data);
-        const soma = (lista: typeof vendas) => lista.reduce((t, v) => t + v.valor, 0);
+        const dia = (v: VendaApi) => dataISO(new Date(v.data_criacao));
+        const doDia = (data: string) => concluidas.filter((v) => dia(v) === data);
+        const soma = (lista: VendaApi[]) => lista.reduce((t, v) => t + Number(v.total), 0);
 
         const vendasHoje = doDia(dataISO(hoje));
         const vendasOntem = doDia(dataISO(ontem));
         const mes = dataISO(hoje).slice(0, 7);
-        const vendasMes = vendas.filter((v) => v.data.startsWith(mes));
+        const vendasMes = concluidas.filter((v) => dia(v).startsWith(mes));
 
         // Últimos 7 dias para o gráfico
         const semana = Array.from({ length: 7 }, (_, i) => {
@@ -109,7 +135,21 @@ function VisaoGeral() {
             };
         });
 
-        const estoqueBaixo = estoqueDemonstracao().filter((p) => p.quantidade <= p.minimo);
+        const estoqueBaixo = estoque.filter((p) => p.quantidade <= p.minimo);
+
+        const ultimas = vendasHoje.slice(0, 6).map((v) => {
+            const primeiro = v.itens[0];
+            const resto = v.itens.length - 1;
+            return {
+                id: v.id,
+                hora: horaHHMM(new Date(v.data_criacao)),
+                descricao: primeiro
+                    ? `${primeiro.unidade === "KG" || primeiro.unidade === "L" ? formatarQuantidade(primeiro.quantidade, primeiro.unidade) : `${Number(primeiro.quantidade)}×`} ${primeiro.nome_produto}${resto > 0 ? ` + ${resto} ${resto === 1 ? "item" : "itens"}` : ""}`
+                    : `Venda #${v.id}`,
+                pagamento: NOME_PAGAMENTO_CURTO[v.forma_pagamento],
+                valor: Number(v.total),
+            };
+        });
 
         return {
             totalHoje: soma(vendasHoje),
@@ -120,10 +160,10 @@ function VisaoGeral() {
             totalMes: soma(vendasMes),
             semana,
             maiorDia: Math.max(...semana.map((s) => s.total), 1),
-            ultimas: [...vendasHoje].sort((a, b) => b.hora.localeCompare(a.hora)).slice(0, 6),
+            ultimas,
             estoqueBaixo,
         };
-    }, []);
+    }, [vendas, estoque]);
 
     const varHoje = variacao(indicadores.totalHoje, indicadores.totalOntem);
     const varQtd = variacao(indicadores.qtdHoje, indicadores.qtdOntem);
@@ -136,8 +176,8 @@ function VisaoGeral() {
             id: "estoque",
             icone: faBoxesStacked,
             tom: "perigo",
-            titulo: `${indicadores.estoqueBaixo.length} produtos com estoque baixo`,
-            descricao: indicadores.estoqueBaixo.slice(0, 3).map((p) => `${p.nome} (${p.quantidade} un.)`).join(", "),
+            titulo: indicadores.estoqueBaixo.length === 1 ? "1 produto com estoque baixo" : `${indicadores.estoqueBaixo.length} produtos com estoque baixo`,
+            descricao: indicadores.estoqueBaixo.slice(0, 3).map((p) => `${p.nome} (${p.quantidade.toLocaleString("pt-BR")})`).join(", "),
             acao: "Ver estoque",
             destino: "/estoque",
         });
@@ -265,12 +305,7 @@ function VisaoGeral() {
                 </section>
                 )}
 
-                {ESTA_EM_DEMONSTRACAO && (verTotais || verVendas || verEstoque) && (
-                    <p className="vg-aviso-demo">
-                        Vendas e estoque com <strong>dados de exemplo</strong> até o módulo de vendas
-                        ficar pronto. Os dados da equipe são reais.
-                    </p>
-                )}
+                {erroDados && <p className="vg-aviso-demo">{erroDados}</p>}
 
                 {/* ===== Gráfico + Atenções ===== */}
                 <section className={`vg-grade ${verTotais ? "" : "vg-grade--uma"}`}>
@@ -373,7 +408,7 @@ function VisaoGeral() {
                     <article className="vg-painel vg-painel--largo">
                         <header className="vg-painel-cabecalho">
                             <div>
-                                <h2>Últimas vendas</h2>
+                                <h2>{verTotais ? "Últimas vendas" : "Minhas últimas vendas"}</h2>
                                 <p>Hoje</p>
                             </div>
                             {verTotais && <Link to="/relatorios" className="vg-link">Ver todas</Link>}
@@ -389,16 +424,16 @@ function VisaoGeral() {
                                 <thead>
                                     <tr>
                                         <th>Hora</th>
-                                        <th>Produto</th>
+                                        <th>Itens</th>
                                         <th>Pagamento</th>
                                         <th className="direita">Valor</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {indicadores.ultimas.map((v, i) => (
-                                        <tr key={`${v.hora}-${i}`}>
+                                    {indicadores.ultimas.map((v) => (
+                                        <tr key={v.id}>
                                             <td className="vg-hora">{v.hora}</td>
-                                            <td>{v.quantidade}× {v.produto}</td>
+                                            <td>{v.descricao}</td>
                                             <td><span className={`vg-pagamento vg-pagamento--${v.pagamento.toLowerCase()}`}>{v.pagamento}</span></td>
                                             <td className="direita"><strong>{moeda(v.valor)}</strong></td>
                                         </tr>

@@ -3,7 +3,7 @@
 // para não pesar o carregamento do site.
 import type { Content, TDocumentDefinitions, TableCell } from "pdfmake/interfaces";
 
-import { dataBR, dataISO, moeda } from "../data/demonstracao";
+import { dataBR, dataISO, moeda } from "../data/negocio";
 import { baixarArquivo, nomeArquivo, type DadosRelatorio } from "./relatorio";
 
 // Paleta do sistema (index.css)
