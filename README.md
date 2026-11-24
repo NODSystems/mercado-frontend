@@ -51,6 +51,19 @@ Cada cargo vê só o que pode usar:
 - **Estoquista:** movimenta o estoque, mas não cadastra produtos.
 - **Gerente:** quase tudo, exceto pagar e remover funcionários.
 
+## Publicar na Vercel
+
+1. Em https://vercel.com: **Add New → Project** e importe este repositório. A Vercel reconhece o Vite sozinha: build `npm run build`, pasta `dist`.
+2. Não precisa de variável de ambiente: o `.env.production` já aponta a API para `/api`.
+3. O `vercel.json` faz duas coisas:
+   - repassa `/api/...` para o backend no Render (`https://nodsystems-api.onrender.com`). Se o endereço do Render for outro, troque ali;
+   - devolve o `index.html` para as rotas do React (`/pdv`, `/estoque`...).
+4. Depois de publicar, coloque o endereço da Vercel em `FRONTEND_URL` e `API_URL` (com `/api`) no Render.
+
+O site da Vercel é `https`, então a câmera do celular funciona direto, sem `dev:rede`.
+
+O passo a passo do backend e do banco está no README do `mercado-backend`.
+
 ## Dados para apresentação
 
 No backend, `npm run demo` cria o "Mercado Demonstração", com 30 dias de vendas fictícias. Senha de todas as contas: `demo12345`.
