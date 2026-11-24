@@ -53,16 +53,19 @@ Cada cargo vê só o que pode usar:
 
 ## Publicar na Vercel
 
-1. Em https://vercel.com: **Add New → Project** e importe este repositório. A Vercel reconhece o Vite sozinha: build `npm run build`, pasta `dist`.
-2. Não precisa de variável de ambiente: o `.env.production` já aponta a API para `/api`.
-3. O `vercel.json` faz duas coisas:
-   - repassa `/api/...` para o backend no Render (`https://nodsystems-api.onrender.com`). Se o endereço do Render for outro, troque ali;
-   - devolve o `index.html` para as rotas do React (`/pdv`, `/estoque`...).
-4. Depois de publicar, coloque o endereço da Vercel em `FRONTEND_URL` e `API_URL` (com `/api`) no Render.
+Publique primeiro o backend (veja o README do `mercado-backend`) e anote o endereço dele.
 
-O site da Vercel é `https`, então a câmera do celular funciona direto, sem `dev:rede`.
+1. Em https://vercel.com: **Add New → Project** e importe este repositório. A Vercel reconhece o Vite sozinha.
+2. Em **Environment Variables**, adicione `BACKEND_URL` com o endereço do backend, por exemplo `https://mercado-backend-xyz.vercel.app`.
+3. Clique em **Deploy**.
 
-O passo a passo do backend e do banco está no README do `mercado-backend`.
+O `vercel.ts` faz duas coisas:
+- repassa `/api/...` para o `BACKEND_URL`. O login fica no mesmo domínio do site e funciona até no iPhone;
+- devolve o `index.html` para as rotas do React (`/pdv`, `/estoque`...).
+
+Sem o `BACKEND_URL`, o deploy falha com uma mensagem explicando o que falta.
+
+O site da Vercel é `https`, então a câmera do celular funciona direto.
 
 ## Dados para apresentação
 
