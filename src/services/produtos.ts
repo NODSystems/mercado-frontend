@@ -109,6 +109,26 @@ export function formatarQuantidade(valor: number | string, unidade: Unidade): st
 
 const base = (empresaId: number) => `/empresas/${empresaId}`;
 
+export type ItemImportacao =
+    | { produtoId: number; quantidade: number; custoUnitario: number | null }
+    | { nome: string; codigoBarras: string | null; categoria: string | null; unidade: Unidade; precoVenda: number; quantidade: number; custoUnitario: number | null };
+
+export type DadosImportacao = {
+    numeroNota: string;
+    fornecedor: string;
+    lancarDespesa: boolean;
+    itens: ItemImportacao[];
+};
+
+export type ResultadoImportacao = {
+    mensagem: string;
+    itens: number;
+    criados: number;
+    atualizados: number;
+    valorTotal: number;
+    despesaLancada: boolean;
+};
+
 export const produtosApi = {
     listar: (empresaId: number, filtros: { busca?: string; inativos?: boolean; estoqueBaixo?: boolean } = {}) => {
         const q = new URLSearchParams();
@@ -145,6 +165,9 @@ export const produtosApi = {
         produtoId: number,
         dados: { tipo: "ENTRADA" | "SAIDA" | "AJUSTE"; quantidade: number; custoUnitario?: number | null; motivo?: string },
     ) => api.post<{ mensagem: string }>(`${base(empresaId)}/produtos/${produtoId}/movimentacoes`, dados),
+
+    importarNota: (empresaId: number, dados: DadosImportacao) =>
+        api.post<ResultadoImportacao>(`${base(empresaId)}/produtos/importar-nota`, dados),
 
     movimentacoes: (empresaId: number, produtoId: number) =>
         api.get<{ movimentacoes: Movimentacao[] }>(`${base(empresaId)}/produtos/${produtoId}/movimentacoes`),

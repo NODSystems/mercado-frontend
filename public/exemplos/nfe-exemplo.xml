@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- NOTA FISCAL DE EXEMPLO (fictícia) para testar a entrada de mercadoria do NODSystems.
+     Não tem validade fiscal: fornecedor, CNPJ, chave e códigos são inventados. -->
+<nfeProc xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00">
+  <NFe>
+    <infNFe Id="NFe35261100000000000191550010000045871000045870" versao="4.00">
+      <ide>
+        <cUF>35</cUF>
+        <natOp>VENDA DE MERCADORIA</natOp>
+        <mod>55</mod>
+        <serie>1</serie>
+        <nNF>4587</nNF>
+        <dhEmi>2026-11-26T09:30:00-03:00</dhEmi>
+        <tpNF>1</tpNF>
+      </ide>
+      <emit>
+        <CNPJ>00000000000191</CNPJ>
+        <xNome>DISTRIBUIDORA EXEMPLO DE ALIMENTOS LTDA</xNome>
+        <xFant>Distribuidora Exemplo</xFant>
+        <enderEmit><xMun>Sao Jose dos Campos</xMun><UF>SP</UF></enderEmit>
+      </emit>
+      <dest>
+        <xNome>MERCADO DEMONSTRACAO LTDA</xNome>
+      </dest>
+    <det nItem="1">
+      <prod>
+        <cProd>1001</cProd>
+        <cEAN>17896543210012</cEAN>
+        <xProd>ARROZ BRANCO TIPO 1 5KG FD C/6</xProd>
+        <NCM>19059090</NCM>
+        <CFOP>5102</CFOP>
+        <uCom>FD</uCom>
+        <qCom>5.0000</qCom>
+        <vUnCom>129.0000000000</vUnCom>
+        <vProd>645.00</vProd>
+        <cEANTrib>7896543210015</cEANTrib>
+        <uTrib>UN</uTrib>
+        <qTrib>30.0000</qTrib>
+        <vUnTrib>21.5000000000</vUnTrib>
+        <indTot>1</indTot>
+      </prod>
+      <imposto><vTotTrib>0.00</vTotTrib></imposto>
+    </det>
+    <det nItem="2">
+      <prod>
+        <cProd>1002</cProd>
+        <cEAN>17896543210029</cEAN>
+        <xProd>FEIJAO CARIOCA TIPO 1 1KG FD C/10</xProd>
+        <NCM>19059090</NCM>
+        <CFOP>5102</CFOP>
+        <uCom>FD</uCom>
+        <qCom>4.0000</qCom>
+        <vUnCom>62.0000000000</vUnCom>
+        <vProd>248.00</vProd>
+        <cEANTrib>7896543210022</cEANTrib>
+        <uTrib>UN</uTrib>
+        <qTrib>40.0000</qTrib>
+        <vUnTrib>6.2000000000</vUnTrib>
+        <indTot>1</indTot>
+      </prod>
+      <imposto><vTotTrib>0.00</vTotTrib></imposto>
+    </det>
+    <det nItem="3">
+      <prod>
+        <cProd>1003</cProd>
+        <cEAN>17896543210036</cEAN>
+        <xProd>LEITE UHT INTEGRAL 1L CX C/12</xProd>
+        <NCM>19059090</NCM>
+        <CFOP>5102</CFOP>
+        <uCom>CX</uCom>
+        <qCom>10.0000</qCom>
+        <vUnCom>51.6000000000</vUnCom>
+        <vProd>516.00</vProd>
+        <cEANTrib>7896543210039</cEANTrib>
+        <uTrib>UN</uTrib>
+        <qTrib>120.0000</qTrib>
+        <vUnTrib>4.3000000000</vUnTrib>
+        <indTot>1</indTot>
+      </prod>
+      <imposto><vTotTrib>0.00</vTotTrib></imposto>
+    </det>
+    <det nItem="4">
+      <prod>
+        <cProd>1004</cProd>
+        <cEAN>17896543210043</cEAN>
+        <xProd>CAFE TORRADO E MOIDO 500G CX C/12</xProd>
+        <NCM>19059090</NCM>
+        <CFOP>5102</CFOP>
+        <uCom>CX</uCom>
+        <qCom>2.0000</qCom>
+        <vUnCom>165.6000000000</vUnCom>
+        <vProd>331.20</vProd>
+        <cEANTrib>7896543210046</cEANTrib>
+        <uTrib>UN</uTrib>
+        <qTrib>24.0000</qTrib>
+        <vUnTrib>13.8000000000</vUnTrib>
+        <indTot>1</indTot>
+      </prod>
+      <imposto><vTotTrib>0.00</vTotTrib></imposto>
+    </det>
+    <det nItem="5">
+      <prod>
+        <cProd>1005</cProd>
+        <cEAN>17896543210050</cEAN>
+        <xProd>REFRIGERANTE COLA PET 2L FD C/6</xProd>
+        <NCM>19059090</NCM>
+        <CFOP>5102</CFOP>
+        <uCom>FD</uCom>
+        <qCom>8.0000</qCom>
+        <vUnCom>40.8000000000</vUnCom>
+        <vProd>326.40</vProd>
+        <cEANTrib>7896543210053</cEANTrib>
+        <uTrib>UN</uTrib>
+        <qTrib>48.0000</qTrib>
+        <vUnTrib>6.8000000000</vUnTrib>
+        <indTot>1</indTot>
+      </prod>
+      <imposto><vTotTrib>0.00</vTotTrib></imposto>
+    </det>
+    <det nItem="6">
+      <prod>
+        <cProd>1006</cProd>
+        <cEAN>17896543210067</cEAN>
+        <xProd>AGUA MINERAL S/GAS 1,5L FD C/6</xProd>
+        <NCM>19059090</NCM>
+        <CFOP>5102</CFOP>
+        <uCom>FD</uCom>
+        <qCom>6.0000</qCom>
+        <vUnCom>11.4000000000</vUnCom>
+        <vProd>68.40</vProd>
+        <cEANTrib>7896543210060</cEANTrib>
+        <uTrib>UN</uTrib>
+        <qTrib>36.0000</qTrib>
+        <vUnTrib>1.9000000000</vUnTrib>
+        <indTot>1</indTot>
+      </prod>
+      <imposto><vTotTrib>0.00</vTotTrib></imposto>
+    </det>
+    <det nItem="7">
+      <prod>
+        <cProd>1007</cProd>
+        <cEAN>17896543210074</cEAN>
+        <xProd>BISCOITO RECHEADO CHOCOLATE 130G CX C/24</xProd>
+        <NCM>19059090</NCM>
+        <CFOP>5102</CFOP>
+        <uCom>CX</uCom>
+        <qCom>3.0000</qCom>
+        <vUnCom>52.8000000000</vUnCom>
+        <vProd>158.40</vProd>
+        <cEANTrib>7896543210077</cEANTrib>
+        <uTrib>UN</uTrib>
+        <qTrib>72.0000</qTrib>
+        <vUnTrib>2.2000000000</vUnTrib>
+        <indTot>1</indTot>
+      </prod>
+      <imposto><vTotTrib>0.00</vTotTrib></imposto>
+    </det>
+    <det nItem="8">
+      <prod>
+        <cProd>1008</cProd>
+        <cEAN>17896543210081</cEAN>
+        <xProd>ACHOCOLATADO EM PO 400G CX C/12</xProd>
+        <NCM>19059090</NCM>
+        <CFOP>5102</CFOP>
+        <uCom>CX</uCom>
+        <qCom>2.0000</qCom>
+        <vUnCom>87.6000000000</vUnCom>
+        <vProd>175.20</vProd>
+        <cEANTrib>7896543210084</cEANTrib>
+        <uTrib>UN</uTrib>
+        <qTrib>24.0000</qTrib>
+        <vUnTrib>7.3000000000</vUnTrib>
+        <indTot>1</indTot>
+      </prod>
+      <imposto><vTotTrib>0.00</vTotTrib></imposto>
+    </det>
+    <det nItem="9">
+      <prod>
+        <cProd>1009</cProd>
+        <cEAN>7896543210091</cEAN>
+        <xProd>SABONETE ERVA DOCE 85G</xProd>
+        <NCM>19059090</NCM>
+        <CFOP>5102</CFOP>
+        <uCom>UN</uCom>
+        <qCom>48.0000</qCom>
+        <vUnCom>1.8900000000</vUnCom>
+        <vProd>90.72</vProd>
+        <cEANTrib>7896543210091</cEANTrib>
+        <uTrib>UN</uTrib>
+        <qTrib>48.0000</qTrib>
+        <vUnTrib>1.8900000000</vUnTrib>
+        <indTot>1</indTot>
+      </prod>
+      <imposto><vTotTrib>0.00</vTotTrib></imposto>
+    </det>
+    <det nItem="10">
+      <prod>
+        <cProd>1010</cProd>
+        <cEAN>SEM GTIN</cEAN>
+        <xProd>QUEIJO PRATO FATIADO</xProd>
+        <NCM>19059090</NCM>
+        <CFOP>5102</CFOP>
+        <uCom>KG</uCom>
+        <qCom>3.5000</qCom>
+        <vUnCom>42.0000000000</vUnCom>
+        <vProd>147.00</vProd>
+        <cEANTrib>SEM GTIN</cEANTrib>
+        <uTrib>KG</uTrib>
+        <qTrib>3.5000</qTrib>
+        <vUnTrib>42.0000000000</vUnTrib>
+        <indTot>1</indTot>
+      </prod>
+      <imposto><vTotTrib>0.00</vTotTrib></imposto>
+    </det>
+      <total>
+        <ICMSTot>
+          <vProd>2706.32</vProd>
+          <vNF>2706.32</vNF>
+        </ICMSTot>
+      </total>
+    </infNFe>
+  </NFe>
+</nfeProc>
