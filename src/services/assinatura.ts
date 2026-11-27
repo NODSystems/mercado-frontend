@@ -42,8 +42,8 @@ export const NOMES_COBRANCA: Record<FormaCobranca, string> = {
 export const assinaturaApi = {
     planos: () => api.get<{ planos: Plano[] }>("/empresas/planos"),
     consultar: (empresaId: number) => api.get<DadosAssinatura>(`/empresas/${empresaId}/assinatura`),
-    assinar: (empresaId: number, planoId: number, formaPagamento: FormaCobranca) =>
-        api.post<{ mensagem: string; linkPagamento: string | null }>(`/empresas/${empresaId}/assinatura`, { planoId, formaPagamento }),
+    assinar: (empresaId: number, planoId: number, formaPagamento: FormaCobranca, documento: string) =>
+        api.post<{ mensagem: string; linkPagamento: string | null }>(`/empresas/${empresaId}/assinatura`, { planoId, formaPagamento, documento }),
     cancelar: async (empresaId: number, senha: string) => {
         await api.post("/auth/reauth", { senhaAtual: senha });
         return api.delete<{ mensagem: string }>(`/empresas/${empresaId}/assinatura`);
