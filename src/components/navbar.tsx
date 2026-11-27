@@ -15,7 +15,12 @@ import { PERMISSAO_DA_AREA } from "../data/permissoes";
 import logo from "../assets/NodLogo(maior).jpeg";
 import "../styles/components/navbar.css";
 
-function Navbar() {
+type Props = {
+    // Versão sem abas, para telas fora de uma empresa (Minhas empresas, Perfil)
+    simples?: boolean;
+};
+
+function Navbar({ simples = false }: Props) {
     const [menu, setMenu] = useState(false);
     const { usuario, empresaAtual, sair: encerrarSessao, pode } = useAuth();
 
@@ -56,15 +61,22 @@ function Navbar() {
         { nome: "Relatórios", rota: "/relatorios", permissao: PERMISSAO_DA_AREA.relatorios },
     ].filter((aba) => aba.permissao === null || pode(aba.permissao));
 
+    const mostrarAbas = !simples && empresaAtual;
+
     return (
         <nav className="navbar">
             <div className="container-fluid navbar-conteudo">
-                <div className="navbar-brand">
+                <button
+                    type="button"
+                    className="navbar-brand"
+                    onClick={() => navigate(mostrarAbas ? "/" : "/minhas-empresas")}
+                    aria-label="Ir para o início"
+                >
                     <img src={logo} alt="Logo NODSystems" />
-                </div>
+                </button>
 
                 <div className="menu-navbar">
-                    {abas.map((aba) => (
+                    {mostrarAbas && abas.map((aba) => (
                         <NavLink
                             key={aba.rota}
                             to={aba.rota}
@@ -101,9 +113,9 @@ function Navbar() {
                             <div className="perfil-informacoes">
                                 <strong>{usuario?.nome.split(" ")[0] ?? ""}</strong>
                                 <span>
-                                    {empresaAtual
+                                    {mostrarAbas && empresaAtual
                                         ? `${nomeDoCargo(empresaAtual)} · ${empresaAtual.nome_fantasia || empresaAtual.razao_social}`
-                                        : ""}
+                                        : usuario?.email ?? ""}
                                 </span>
                             </div>
                         </div>
@@ -124,7 +136,7 @@ function Navbar() {
 
                             <button type="button" onClick={trocarEmpresa}>
                                 <FontAwesomeIcon icon={faBuilding} />
-                                Trocar de empresa
+                                {mostrarAbas ? "Trocar de empresa" : "Minhas empresas"}
                             </button>
 
                             <button type="button" onClick={sair}>

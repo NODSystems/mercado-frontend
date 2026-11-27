@@ -145,6 +145,7 @@ export type Sessao = {
     expires_at: string;
     revoked_at: string | null;
     user_agent: string | null;
+    atual?: boolean;
 };
 
 export type StatusFuncionario = "CONVIDADO" | "ATIVO" | "INATIVO";

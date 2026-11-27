@@ -1,6 +1,6 @@
 
 .minhas-empresas {
-    min-height: 100vh;
+    min-height: calc(100vh - 70px);
     padding: 48px;
     background: var(--cor-fundo);
     color: var(--cor-texto);
@@ -275,13 +275,19 @@
 .empresa-card-wrapper .empresa-card {
     width: 100%;
     height: 100%;
-    padding-right: 56px;
+    padding-right: 96px;
 }
 
-.empresa-excluir {
+.empresa-card-acoes {
     position: absolute;
     top: 14px;
     right: 14px;
+    display: flex;
+    gap: 4px;
+}
+
+.empresa-editar,
+.empresa-excluir {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -293,6 +299,13 @@
     color: #94a3b8;
     cursor: pointer;
     transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+.empresa-editar:hover,
+.empresa-editar:focus-visible {
+    color: #1d4ed8;
+    background: #eff6ff;
+    border-color: #bfdbfe;
 }
 
 .empresa-excluir:hover,

@@ -21,6 +21,7 @@ import Relatorios from './pages/nodSystems/Relatorios';
 import MinhasEmpresas from './pages/empresa/MinhasEmpresas';
 import TipoEmpresa from './pages/empresa/TipoEmpresa';
 import ConfigurarEmpresa from './pages/empresa/ConfigurarEmpresa';
+import EditarEmpresa from './pages/empresa/EditarEmpresa';
 
 import Perfil from './pages/usuario/Perfil';
 import AceitarConvite from './pages/usuario/AceitarConvite';
@@ -66,6 +67,15 @@ function App() {
                 element={
                     <RotaProtegida>
                         <ConfigurarEmpresa />
+                    </RotaProtegida>
+                }
+            />
+
+            <Route
+                path="/empresas/:empresaId/editar"
+                element={
+                    <RotaProtegida>
+                        <EditarEmpresa />
                     </RotaProtegida>
                 }
             />

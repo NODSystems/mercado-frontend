@@ -17,7 +17,7 @@ import {
     telefoneValido,
 } from '../../utils/validacao';
 
-type DadosEmpresa = {
+export type DadosEmpresa = {
     nome: string;
     nomeFantasia: string;
     cnpj: string;
@@ -53,7 +53,7 @@ const camposPorEtapa: Record<number, (keyof DadosEmpresa)[]> = {
 };
 
 // Nome do campo no backend → nome do campo nesta tela
-const campoDoBackend: Record<string, keyof DadosEmpresa> = {
+export const campoDoBackend: Record<string, keyof DadosEmpresa> = {
     razao_social: 'nome',
     nome_fantasia: 'nomeFantasia',
     cnpj: 'cnpj',
@@ -67,7 +67,7 @@ const campoDoBackend: Record<string, keyof DadosEmpresa> = {
 };
 
 // Mesmas regras do backend: o erro aparece no campo, na hora.
-function validarCampo(campo: keyof DadosEmpresa, valor: string): string {
+export function validarCampo(campo: keyof DadosEmpresa, valor: string): string {
     const texto = valor.trim();
 
     switch (campo) {
@@ -108,7 +108,7 @@ function validarCampo(campo: keyof DadosEmpresa, valor: string): string {
 }
 
 // Máscaras aplicadas enquanto a pessoa digita
-const mascaras: Partial<Record<keyof DadosEmpresa, (v: string) => string>> = {
+export const mascaras: Partial<Record<keyof DadosEmpresa, (v: string) => string>> = {
     cnpj: mascaraCnpj,
     telefone: mascaraTelefone,
     cep: mascaraCep,

@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faTrash } from '@fortawesome/free-solid-svg-icons';
+import { faPen, faTrash } from '@fortawesome/free-solid-svg-icons';
+
+import Navbar from '../../components/navbar';
 
 import { useAuth } from '../../contexts/AuthContext';
 import ExcluirEmpresaModal from '../../components/empresa/ExcluirEmpresaModal';
@@ -18,7 +20,7 @@ const CHAVE_CONVITE = 'nod:convitePendente';
 
 function MinhasEmpresas() {
     const navigate = useNavigate();
-    const { usuario, sair, selecionarEmpresa, empresaAtual } = useAuth();
+    const { usuario, selecionarEmpresa, empresaAtual } = useAuth();
 
     const [empresas, setEmpresas] = useState<EmpresaResumo[]>([]);
     const [carregando, setCarregando] = useState(true);
@@ -58,11 +60,6 @@ function MinhasEmpresas() {
         navigate('/');
     }
 
-    async function sairDaConta() {
-        await sair();
-        navigate('/login');
-    }
-
     const botaoAdicionar = (
         <button
             className="adicionar-empresa"
@@ -73,6 +70,8 @@ function MinhasEmpresas() {
     );
 
     return (
+        <>
+        <Navbar simples />
         <main className="minhas-empresas">
             <header className="empresas-header">
                 <div>
@@ -85,9 +84,6 @@ function MinhasEmpresas() {
 
                 <div className="empresas-acoes-topo">
                     {botaoAdicionar}
-                    <button className="empresas-sair" onClick={sairDaConta}>
-                        Sair
-                    </button>
                 </div>
             </header>
 
@@ -147,8 +143,18 @@ function MinhasEmpresas() {
                                     </div>
                                 </button>
 
-                                {/* Só o proprietário pode excluir */}
+                                {/* Só o proprietário edita e exclui */}
                                 {empresa.cargo === 'PROPRIETARIO' && (
+                                    <div className="empresa-card-acoes">
+                                    <button
+                                        type="button"
+                                        className="empresa-editar"
+                                        onClick={() => navigate(`/empresas/${empresa.id}/editar`)}
+                                        aria-label={`Editar ${empresa.nome_fantasia || empresa.razao_social}`}
+                                        title="Editar empresa e assinatura"
+                                    >
+                                        <FontAwesomeIcon icon={faPen} />
+                                    </button>
                                     <button
                                         type="button"
                                         className="empresa-excluir"
@@ -158,6 +164,7 @@ function MinhasEmpresas() {
                                     >
                                         <FontAwesomeIcon icon={faTrash} />
                                     </button>
+                                    </div>
                                 )}
                             </div>
                         );
@@ -190,6 +197,7 @@ function MinhasEmpresas() {
                 />
             )}
         </main>
+        </>
     );
 }
 
