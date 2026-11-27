@@ -29,6 +29,11 @@ function RotaProtegida({ children, exigeEmpresa = false, permissao }: Props) {
     }
 
     if (!usuario) {
+        // Visitante abrindo o endereço principal vê a página inicial (apresentação do produto)
+        if (location.pathname === "/" && !location.search) {
+            return <Navigate to="/home" replace />;
+        }
+
         const destino = location.pathname + location.search;
 
         return (
