@@ -6,6 +6,7 @@ import { Routes, Route } from 'react-router-dom';
 import Home from './pages/home/Home';
 import Login from './pages/usuario/Login';
 import Cadastro from './pages/usuario/Cadastro';
+import RedefinirSenha from './pages/usuario/RedefinirSenha';
 import RecuperarSenha from './pages/usuario/RecuperarSenha';
 
 // Componentes e páginas principais do sistema.
@@ -40,6 +41,7 @@ function App() {
                 path="/recuperar-senha"
                 element={<RecuperarSenha />}
             />
+            <Route path="/redefinir-senha" element={<RedefinirSenha />} />
             <Route path="/cadastro" element={<Cadastro />} />
 
             {/* Link do e-mail de convite de funcionário */}
