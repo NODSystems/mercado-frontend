@@ -17,7 +17,7 @@ import {
     type Plano,
 } from '../../services/assinatura';
 import { TIPOS_EMPRESA } from '../../data/tiposEmpresa';
-import { ESTADOS } from '../../utils/validacao';
+import { ESTADOS, cnpjValido, cpfValido, mascaraCnpj, mascaraCpf } from '../../utils/validacao';
 import { campoDoBackend, mascaras, validarCampo, type DadosEmpresa } from './ConfigurarEmpresa';
 
 import '../../styles/empresa/EditarEmpresa.css';
@@ -99,6 +99,9 @@ function EditarEmpresa() {
     const [assinatura, setAssinatura] = useState<DadosAssinatura | null>(null);
     const [planos, setPlanos] = useState<Plano[]>([]);
     const [forma, setForma] = useState<FormaCobranca>('UNDEFINED');
+    // CPF do proprietário ou CNPJ da empresa, para o Asaas emitir a cobrança
+    const [documento, setDocumento] = useState('');
+    const [erroDocumento, setErroDocumento] = useState('');
     const [assinando, setAssinando] = useState<number | null>(null);
     const [avisoPlano, setAvisoPlano] = useState<{ texto: string; tipo: 'sucesso' | 'erro' | 'info' } | null>(null);
     const [cancelando, setCancelando] = useState(false);
@@ -129,6 +132,7 @@ function EditarEmpresa() {
                 }
                 setDados(paraFormulario(resultado));
                 setTipoNegocio(resultado.tipo_negocio);
+                if (resultado.cnpj) setDocumento(mascaraCnpj(resultado.cnpj));
                 await carregarAssinatura().catch(() => undefined);
             })
             .catch((e) => setErroCarga(mensagemDeErro(e)))
@@ -198,11 +202,30 @@ function EditarEmpresa() {
         }
     }
 
+    function mascaraDocumento(valor: string) {
+        const d = valor.replace(/\D/g, '');
+        return d.length <= 11 ? mascaraCpf(d) : mascaraCnpj(d);
+    }
+
+    function validarDocumento(valor: string) {
+        const d = valor.replace(/\D/g, '');
+        if (!d) return 'Informe o CPF do proprietário ou o CNPJ da empresa.';
+        if (d.length === 11) return cpfValido(d) ? '' : 'CPF inválido. Confira os números.';
+        if (d.length === 14) return cnpjValido(d) ? '' : 'CNPJ inválido. Confira os números.';
+        return 'CPF tem 11 dígitos e CNPJ tem 14.';
+    }
+
     async function assinar(plano: Plano) {
         setAvisoPlano(null);
+        const msgDoc = validarDocumento(documento);
+        setErroDocumento(msgDoc);
+        if (msgDoc) {
+            document.getElementById('ee-documento')?.focus();
+            return;
+        }
         setAssinando(plano.id);
         try {
-            const r = await assinaturaApi.assinar(empresaId, plano.id, forma);
+            const r = await assinaturaApi.assinar(empresaId, plano.id, forma, documento.replace(/\D/g, ''));
             await carregarAssinatura();
             if (r.linkPagamento) {
                 window.open(r.linkPagamento, '_blank', 'noopener');
@@ -211,6 +234,9 @@ function EditarEmpresa() {
                 setAvisoPlano({ texto: r.mensagem, tipo: 'sucesso' });
             }
         } catch (e) {
+            if (e instanceof ApiError && e.erros.some((x) => x.campo === 'documento')) {
+                setErroDocumento(e.erros.find((x) => x.campo === 'documento')!.mensagem);
+            }
             setAvisoPlano({ texto: mensagemDeErro(e), tipo: 'erro' });
         } finally {
             setAssinando(null);
@@ -368,6 +394,23 @@ function EditarEmpresa() {
                                     {!assinaturaAtiva && (
                                         <>
                                             <h3>Escolha um plano</h3>
+                                            <div className="ee-cobranca">
+                                            <label className="ee-campo ee-documento">
+                                                CPF ou CNPJ para cobrança
+                                                <input
+                                                    id="ee-documento"
+                                                    value={documento}
+                                                    inputMode="numeric"
+                                                    placeholder="CPF do proprietário ou CNPJ"
+                                                    onChange={(e) => { setDocumento(mascaraDocumento(e.target.value)); if (erroDocumento) setErroDocumento(''); }}
+                                                    onBlur={() => documento && setErroDocumento(validarDocumento(documento))}
+                                                    aria-invalid={Boolean(erroDocumento)}
+                                                    aria-describedby="ee-documento-ajuda"
+                                                />
+                                                {erroDocumento
+                                                    ? <small className="ee-erro">{erroDocumento}</small>
+                                                    : <small id="ee-documento-ajuda" className="ee-ajuda-campo">Sem CNPJ? Use o CPF do proprietário. Vai só para o Asaas emitir a fatura.</small>}
+                                            </label>
                                             <label className="ee-campo ee-forma">
                                                 Forma de pagamento
                                                 <select value={forma} onChange={(e) => setForma(e.target.value as FormaCobranca)}>
@@ -376,6 +419,7 @@ function EditarEmpresa() {
                                                     ))}
                                                 </select>
                                             </label>
+                                            </div>
                                             <div className="ee-planos">
                                                 {planos.map((p) => {
                                                     const gratis = Number(p.preco) <= 0;

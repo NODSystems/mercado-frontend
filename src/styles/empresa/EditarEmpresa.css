@@ -381,3 +381,21 @@
     font-size: 14px;
     color: var(--cor-texto-secundario, #64748b);
 }
+
+/* CPF/CNPJ + forma de pagamento lado a lado */
+.ee-cobranca {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    align-items: flex-start;
+    margin-bottom: 14px;
+}
+
+.ee-documento { flex: 1 1 260px; max-width: 340px; }
+.ee-cobranca .ee-forma { flex: 1 1 200px; margin-bottom: 0; }
+
+.ee-ajuda-campo {
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--cor-texto-secundario, #64748b);
+}
