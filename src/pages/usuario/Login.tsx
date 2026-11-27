@@ -123,6 +123,12 @@ function Login() {
             </div>
           )}
 
+          {params.get('senhaAlterada') === 'true' && (
+            <div className="nod-alerta nod-alerta--sucesso" role="status">
+              Senha alterada! Entre com a nova senha.
+            </div>
+          )}
+
           {verificado === 'true' && (
             <div className="nod-alerta nod-alerta--sucesso" role="status">
               E-mail confirmado! Agora é só entrar.
