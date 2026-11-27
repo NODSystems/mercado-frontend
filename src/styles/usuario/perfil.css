@@ -283,3 +283,73 @@
         flex-wrap: wrap;
     }
 }
+
+/* ===== Sessões ===== */
+.sessoes-cabecalho {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.sessoes-cabecalho h3 { margin: 0; }
+
+.sessoes-acoes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.sessoes-acoes button,
+.sessao-botoes button {
+    padding: 7px 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 7px;
+    background: #fff;
+    color: #334155;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.sessoes-acoes button:hover:not(:disabled),
+.sessao-botoes button:hover:not(:disabled) { background: #f8fafc; }
+
+.sessoes-acoes button.perigo {
+    border-color: #fecaca;
+    color: #dc2626;
+}
+
+.sessoes-acoes button:disabled,
+.sessao-botoes button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.sessoes-tabela { overflow-x: auto; }
+
+.sessao-atual {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 2px 7px;
+    border-radius: 10px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.sessao-status {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.sessao-status--ativa { background: #dcfce7; color: #166534; }
+.sessao-status--encerrada,
+.sessao-status--expirada { background: #f1f5f9; color: #64748b; }
+.sessao-encerrada td { color: #94a3b8; }
+.sessao-botoes { text-align: right; }

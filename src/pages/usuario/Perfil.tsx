@@ -12,6 +12,7 @@ import {
 import "../../styles/usuario/perfil.css";
 import { useAuth } from "../../contexts/AuthContext";
 import { api, mensagemDeErro, nomeDoCargo, type Sessao } from "../../services/api";
+import Navbar from "../../components/navbar";
 import { LIMITES } from "../../utils/validacao";
 
 // Transforma o "user agent" do navegador em algo legível (ex.: "Windows - Chrome")
@@ -40,7 +41,7 @@ function descreverDispositivo(userAgent: string | null): string {
 function Perfil() {
     const navigate = useNavigate();
 
-    const { usuario, empresaAtual, recarregarUsuario } = useAuth();
+    const { usuario, empresaAtual, recarregarUsuario, sair } = useAuth();
 
     // A foto ainda não tem rota no backend: fica salva neste navegador.
     const dadosSalvos = (() => {
@@ -67,28 +68,59 @@ function Perfil() {
     };
     const [salvando, setSalvando] = useState(false);
 
-    // Últimos logins = sessões registradas no backend
+    // Sessões (aparelhos onde a conta está logada)
     const [sessoes, setSessoes] = useState<Sessao[]>([]);
+    const [mensagemSessoes, setMensagemSessoes] = useState("");
+    const [ocupado, setOcupado] = useState("");
 
-    useEffect(() => {
+    function carregarSessoes() {
         api.get<Sessao[]>("/auth/sessoes")
             .then((lista) => setSessoes(
-                [...lista]
-                    .sort((a, b) => b.created_at.localeCompare(a.created_at))
-                    .slice(0, 5)
+                [...lista].sort((a, b) => b.created_at.localeCompare(a.created_at))
             ))
             .catch(() => setSessoes([]));
-    }, []);
+    }
 
-    const logins = sessoes.map((sessao) => {
-        const data = new Date(sessao.created_at);
+    useEffect(() => { carregarSessoes(); }, []);
 
-        return {
-            data: data.toLocaleDateString("pt-BR"),
-            horario: data.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
-            dispositivo: descreverDispositivo(sessao.user_agent)
-        };
-    });
+    const agora = Date.now();
+    const situacao = (s: Sessao) =>
+        s.revoked_at ? "Encerrada" : new Date(s.expires_at).getTime() < agora ? "Expirada" : "Ativa";
+
+    async function acaoSessao(chave: string, executar: () => Promise<{ mensagem?: string }>, desconecta = false) {
+        setOcupado(chave);
+        setMensagemSessoes("");
+        try {
+            const r = await executar();
+            if (desconecta) {
+                await sair();
+                navigate("/login");
+                return;
+            }
+            setMensagemSessoes(r?.mensagem ?? "Pronto.");
+            carregarSessoes();
+        } catch (e) {
+            setMensagemSessoes(mensagemDeErro(e));
+        } finally {
+            setOcupado("");
+        }
+    }
+
+    const encerrarSessao = (s: Sessao) =>
+        acaoSessao(`encerrar-${s.id}`, () => api.post(`/auth/sessoes/desativar/${s.id}`), Boolean(s.atual));
+    const apagarSessao = (s: Sessao) =>
+        acaoSessao(`apagar-${s.id}`, () => api.delete(`/auth/sessoes/${s.id}`), Boolean(s.atual));
+    const encerrarOutras = () =>
+        acaoSessao("outras", () => api.post("/auth/sessoes/encerrar-outras"));
+    const apagarEncerradas = () =>
+        acaoSessao("limpar", () => api.delete("/auth/sessoes/encerradas"));
+    const encerrarTodas = () => {
+        if (!window.confirm("Sair de todos os aparelhos, inclusive deste?")) return;
+        acaoSessao("todas", () => api.post("/auth/sessoes/logout-todas"), true);
+    };
+
+    const ativas = sessoes.filter((s) => situacao(s) === "Ativa");
+    const encerradas = sessoes.length - ativas.length;
 
     function alterarFoto(event: ChangeEvent<HTMLInputElement>) {
         const arquivo = event.target.files?.[0];
@@ -163,6 +195,8 @@ function Perfil() {
     }
 
     return (
+        <>
+        <Navbar simples={!empresaAtual} />
         <main className="perfil-pagina">
             <section className="perfil-conteudo">
 
@@ -266,34 +300,75 @@ function Perfil() {
                     </div>
                 </div>
 
-                {/* Histórico de logins */}
+                {/* Sessões: onde a conta está logada */}
                 <div className="historico-logins">
-                    <h3>Últimos logins</h3>
+                    <div className="sessoes-cabecalho">
+                        <h3>Sessões e acessos</h3>
+                        <div className="sessoes-acoes">
+                            <button type="button" onClick={encerrarOutras} disabled={ativas.length <= 1 || ocupado !== ""}>
+                                Encerrar outras sessões
+                            </button>
+                            <button type="button" onClick={apagarEncerradas} disabled={encerradas === 0 || ocupado !== ""}>
+                                Limpar encerradas
+                            </button>
+                            <button type="button" className="perigo" onClick={encerrarTodas} disabled={ocupado !== ""}>
+                                Sair de todos
+                            </button>
+                        </div>
+                    </div>
 
+                    {mensagemSessoes && <p className="nod-alerta nod-alerta--info" role="status">{mensagemSessoes}</p>}
+
+                    <div className="sessoes-tabela">
                     <table>
                         <thead>
                             <tr>
-                                <th>Data</th>
-                                <th>Horário</th>
+                                <th>Entrou em</th>
                                 <th>Dispositivo</th>
+                                <th>Situação</th>
+                                <th aria-label="Ações" />
                             </tr>
                         </thead>
 
                         <tbody>
-                            {logins.length === 0 && (
+                            {sessoes.length === 0 && (
                                 <tr>
-                                    <td colSpan={3}>Nenhum login encontrado.</td>
+                                    <td colSpan={4}>Nenhuma sessão encontrada.</td>
                                 </tr>
                             )}
-                            {logins.map((login, index) => (
-                                <tr key={index}>
-                                    <td>{login.data}</td>
-                                    <td>{login.horario}</td>
-                                    <td>{login.dispositivo}</td>
-                                </tr>
-                            ))}
+                            {sessoes.map((s) => {
+                                const data = new Date(s.created_at);
+                                const estado = situacao(s);
+                                return (
+                                    <tr key={s.id} className={estado !== "Ativa" ? "sessao-encerrada" : ""}>
+                                        <td>
+                                            {data.toLocaleDateString("pt-BR")}{" "}
+                                            {data.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                                        </td>
+                                        <td>
+                                            {descreverDispositivo(s.user_agent)}
+                                            {s.atual && <span className="sessao-atual">este aparelho</span>}
+                                        </td>
+                                        <td>
+                                            <span className={`sessao-status sessao-status--${estado.toLowerCase()}`}>{estado}</span>
+                                        </td>
+                                        <td className="sessao-botoes">
+                                            {estado === "Ativa" ? (
+                                                <button type="button" onClick={() => encerrarSessao(s)} disabled={ocupado !== ""}>
+                                                    {s.atual ? "Sair" : "Encerrar"}
+                                                </button>
+                                            ) : (
+                                                <button type="button" onClick={() => apagarSessao(s)} disabled={ocupado !== ""}>
+                                                    Excluir
+                                                </button>
+                                            )}
+                                        </td>
+                                    </tr>
+                                );
+                            })}
                         </tbody>
                     </table>
+                    </div>
                 </div>
 
                 {/* Mensagem */}
@@ -311,7 +386,7 @@ function Perfil() {
                 <div className="perfil-acoes">
                     <button
                         className="botao-voltar"
-                        onClick={() => navigate("/")}
+                        onClick={() => navigate(empresaAtual ? "/" : "/minhas-empresas")}
                     >
                         Voltar
                     </button>
@@ -327,6 +402,7 @@ function Perfil() {
 
             </section>
         </main>
+        </>
     );
 }
 
