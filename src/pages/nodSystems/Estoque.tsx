@@ -3,7 +3,7 @@
 // ajustes e histórico.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faBarcode, faPlus } from '@fortawesome/free-solid-svg-icons';
+import { faBarcode, faFileImport, faPlus } from '@fortawesome/free-solid-svg-icons';
 
 import '../../styles/nodSystems/Estoque.css';
 import { useAuth } from '../../contexts/AuthContext';
@@ -13,11 +13,13 @@ import { useLeitorUSB } from '../../hooks/useLeitorUSB';
 import LeitorCodigo from '../../components/LeitorCodigo';
 import FormularioProduto from '../../components/estoque/FormularioProduto';
 import PainelMovimentacao from '../../components/estoque/PainelMovimentacao';
+import ImportarNota from '../../components/estoque/ImportarNota';
 
 type Painel =
     | { tipo: 'novo'; codigo?: string }
     | { tipo: 'editar'; produto: Produto }
     | { tipo: 'movimentar'; produto: Produto }
+    | { tipo: 'nota' }
     | null;
 
 const ativo = (p: Produto) => p.ativo === true || p.ativo === 1;
@@ -153,6 +155,11 @@ function Estoque() {
                     {(podeCadastrar || podeMovimentar) && (
                         <button className="estoque-botao-secundario" onClick={() => setLendo(true)}>
                             <FontAwesomeIcon icon={faBarcode} /> Ler código
+                        </button>
+                    )}
+                    {podeMovimentar && (
+                        <button className="estoque-botao-secundario" onClick={() => setPainel({ tipo: 'nota' })}>
+                            <FontAwesomeIcon icon={faFileImport} /> Importar nota (XML)
                         </button>
                     )}
                     {podeCadastrar && (
@@ -336,6 +343,17 @@ function Estoque() {
                     podeMovimentar={podeMovimentar}
                     onFechar={() => setPainel(null)}
                     onAlterado={() => carregar()}
+                />
+            )}
+
+            {painel?.tipo === 'nota' && (
+                <ImportarNota
+                    empresaId={empresaId}
+                    produtos={produtos}
+                    podeCadastrar={podeCadastrar}
+                    podeFinanceiro={pode('financeiro.visualizar')}
+                    onFechar={() => setPainel(null)}
+                    onImportado={(mensagem) => { setPainel(null); setAviso(mensagem); carregar(); }}
                 />
             )}
         </main>
